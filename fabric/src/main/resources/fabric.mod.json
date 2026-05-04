@@ -3,12 +3,12 @@
   "id": "config-backuper",
   "version": "${version}",
   "name": "Config Backuper",
-  "description": "A simple mod for backing up all configurations at the start of the game.",
+  "description": "A simple Minecraft mod that automatically backs up game configurations, supports configurable backup paths and WebDAV cloud backup.",
   "authors": [
-    "NaoCraftLab"
+    "Akiyy Dev"
   ],
   "contact": {
-    "sources": "https://github.com/NaoCraftLab/Config-Backuper"
+    "sources": "https://github.com/Akiyy-dev/Config-Cloud-Backuper"
   },
   "license": "MIT",
   "icon": "assets/config-backuper/icon.png",
@@ -16,15 +16,16 @@
   "entrypoints": {
     "main": [
       "com.naocraftlab.configbackuper.FabricModInitializer"
+    ],
+    "modmenu": [
+      "com.naocraftlab.configbackuper.config.ModMenuIntegration"
     ]
   },
   "mixins": [],
   "depends": {
     "fabricloader": ">=0.15.0",
     "minecraft": ">=1.20-alpha.23.12.a",
-    "java": ">=17"
-  },
-  "suggests": {
-    "another-mod": "*"
+    "java": ">=17",
+    "cloth-config": ">=11.0.0"
   }
 }
