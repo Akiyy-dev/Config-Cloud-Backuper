@@ -10,6 +10,10 @@ public class ModConfig {
     private boolean includeGameConfigs = true;
     private boolean includeModConfigs = true;
     private boolean includeShaderPackConfigs = true;
+    private boolean includeSchematics = true;
+    private boolean include3dSkin = true;
+    private boolean includeSyncmatics = true;
+    private boolean includeDefaultConfigs = true;
     private int maxBackups = 10;
     private boolean compressionEnabled = true;
     private Path backupFolder = Path.of("./config-backuper-backups");
@@ -38,6 +42,38 @@ public class ModConfig {
 
     public void setIncludeShaderPackConfigs(boolean includeShaderPackConfigs) {
         this.includeShaderPackConfigs = includeShaderPackConfigs;
+    }
+
+    public boolean isIncludeSchematics() {
+        return includeSchematics;
+    }
+
+    public void setIncludeSchematics(boolean includeSchematics) {
+        this.includeSchematics = includeSchematics;
+    }
+
+    public boolean isInclude3dSkin() {
+        return include3dSkin;
+    }
+
+    public void setInclude3dSkin(boolean include3dSkin) {
+        this.include3dSkin = include3dSkin;
+    }
+
+    public boolean isIncludeSyncmatics() {
+        return includeSyncmatics;
+    }
+
+    public void setIncludeSyncmatics(boolean includeSyncmatics) {
+        this.includeSyncmatics = includeSyncmatics;
+    }
+
+    public boolean isIncludeDefaultConfigs() {
+        return includeDefaultConfigs;
+    }
+
+    public void setIncludeDefaultConfigs(boolean includeDefaultConfigs) {
+        this.includeDefaultConfigs = includeDefaultConfigs;
     }
 
     public int getMaxBackups() {

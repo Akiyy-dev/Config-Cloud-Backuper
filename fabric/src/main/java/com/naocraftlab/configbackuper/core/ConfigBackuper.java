@@ -71,6 +71,22 @@ public class ConfigBackuper {
             if (config.isIncludeShaderPackConfigs()) {
                 addDirectoryToZip(zos, getShaderPackConfigDir(), "shader-configs/");
             }
+            // 备份 schematics 配置
+            if (config.isIncludeSchematics()) {
+                addDirectoryToZip(zos, getSchematicsDir(), "schematics/");
+            }
+            // 备份 3d-skin 配置
+            if (config.isInclude3dSkin()) {
+                addDirectoryToZip(zos, get3dSkinDir(), "3d-skin/");
+            }
+            // 备份 syncmatics 配置
+            if (config.isIncludeSyncmatics()) {
+                addDirectoryToZip(zos, getSyncmaticsDir(), "syncmatics/");
+            }
+            // 备份 defaultconfigs 配置
+            if (config.isIncludeDefaultConfigs()) {
+                addDirectoryToZip(zos, getDefaultConfigsDir(), "defaultconfigs/");
+            }
         }
     }
 
@@ -88,6 +104,18 @@ public class ConfigBackuper {
         }
         if (config.isIncludeShaderPackConfigs()) {
             copyDirectory(getShaderPackConfigDir(), backupFile.resolve("shader-configs"));
+        }
+        if (config.isIncludeSchematics()) {
+            copyDirectory(getSchematicsDir(), backupFile.resolve("schematics"));
+        }
+        if (config.isInclude3dSkin()) {
+            copyDirectory(get3dSkinDir(), backupFile.resolve("3d-skin"));
+        }
+        if (config.isIncludeSyncmatics()) {
+            copyDirectory(getSyncmaticsDir(), backupFile.resolve("syncmatics"));
+        }
+        if (config.isIncludeDefaultConfigs()) {
+            copyDirectory(getDefaultConfigsDir(), backupFile.resolve("defaultconfigs"));
         }
     }
 
@@ -183,5 +211,33 @@ public class ConfigBackuper {
      */
     private Path getShaderPackConfigDir() {
         return Path.of(System.getProperty("user.dir"), "shaderpacks").normalize();
+    }
+
+    /**
+     * 获取 schematics 目录
+     */
+    private Path getSchematicsDir() {
+        return Path.of(System.getProperty("user.dir"), "schematics").normalize();
+    }
+
+    /**
+     * 获取 3d-skin 目录
+     */
+    private Path get3dSkinDir() {
+        return Path.of(System.getProperty("user.dir"), "3d-skin").normalize();
+    }
+
+    /**
+     * 获取 syncmatics 目录
+     */
+    private Path getSyncmaticsDir() {
+        return Path.of(System.getProperty("user.dir"), "syncmatics").normalize();
+    }
+
+    /**
+     * 获取 defaultconfigs 目录
+     */
+    private Path getDefaultConfigsDir() {
+        return Path.of(System.getProperty("user.dir"), "defaultconfigs").normalize();
     }
 }
