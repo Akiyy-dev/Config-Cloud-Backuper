@@ -221,6 +221,17 @@ public class ModConfigScreen extends Screen {
                         "Remote directory path on WebDAV server"))
                 .build());
 
+        // ===== Backup Management =====
+        BackupManagementCategory.build(
+                builder,
+                entryBuilder,
+                isChinese,
+                mod.getConfigBackuper(),
+                mod.getBackupLimiter(),
+                config,
+                webDavConfig
+        );
+
         // ===== Save Handler =====
         builder.setSavingRunnable(() -> {
             // Save main configuration
