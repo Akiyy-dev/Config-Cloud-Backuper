@@ -107,6 +107,15 @@ public class ModConfigScreen extends Screen {
                 .setTooltip(t("将 syncmatics 文件加入备份", "Include syncmatics files in the backup"))
                 .build());
 
+        // includeDefaultConfigs
+        general.addEntry(entryBuilder.startBooleanToggle(
+                        t("包含 Default Configs", "Include Default Configs"),
+                        config.isIncludeDefaultConfigs())
+                .setDefaultValue(true)
+                .setSaveConsumer(config::setIncludeDefaultConfigs)
+                .setTooltip(t("将 defaultconfigs 文件加入备份", "Include defaultconfigs files in the backup"))
+                .build());
+
         // compressionEnabled
         general.addEntry(entryBuilder.startBooleanToggle(
                         t("启用压缩", "Compression Enabled"),

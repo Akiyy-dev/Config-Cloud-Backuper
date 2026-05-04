@@ -83,6 +83,10 @@ public class ConfigBackuper {
             if (config.isIncludeSyncmatics()) {
                 addDirectoryToZip(zos, getSyncmaticsDir(), "syncmatics/");
             }
+            // 备份 defaultconfigs 配置
+            if (config.isIncludeDefaultConfigs()) {
+                addDirectoryToZip(zos, getDefaultConfigsDir(), "defaultconfigs/");
+            }
         }
     }
 
@@ -109,6 +113,9 @@ public class ConfigBackuper {
         }
         if (config.isIncludeSyncmatics()) {
             copyDirectory(getSyncmaticsDir(), backupFile.resolve("syncmatics"));
+        }
+        if (config.isIncludeDefaultConfigs()) {
+            copyDirectory(getDefaultConfigsDir(), backupFile.resolve("defaultconfigs"));
         }
     }
 
@@ -225,5 +232,12 @@ public class ConfigBackuper {
      */
     private Path getSyncmaticsDir() {
         return Path.of(System.getProperty("user.dir"), "syncmatics").normalize();
+    }
+
+    /**
+     * 获取 defaultconfigs 目录
+     */
+    private Path getDefaultConfigsDir() {
+        return Path.of(System.getProperty("user.dir"), "defaultconfigs").normalize();
     }
 }

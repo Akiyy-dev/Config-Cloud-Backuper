@@ -13,6 +13,7 @@ public class ModConfig {
     private boolean includeSchematics = true;
     private boolean include3dSkin = true;
     private boolean includeSyncmatics = true;
+    private boolean includeDefaultConfigs = true;
     private int maxBackups = 10;
     private boolean compressionEnabled = true;
     private Path backupFolder = Path.of("./config-backuper-backups");
@@ -65,6 +66,14 @@ public class ModConfig {
 
     public void setIncludeSyncmatics(boolean includeSyncmatics) {
         this.includeSyncmatics = includeSyncmatics;
+    }
+
+    public boolean isIncludeDefaultConfigs() {
+        return includeDefaultConfigs;
+    }
+
+    public void setIncludeDefaultConfigs(boolean includeDefaultConfigs) {
+        this.includeDefaultConfigs = includeDefaultConfigs;
     }
 
     public int getMaxBackups() {
