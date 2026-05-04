@@ -5,10 +5,10 @@
   "name": "Config Backuper",
   "description": "A simple Minecraft mod that automatically backs up game configurations, supports configurable backup paths and WebDAV cloud backup.",
   "authors": [
-    "NaoCraftLab"
+    "Akiyy Dev"
   ],
   "contact": {
-    "sources": "https://github.com/NaoCraftLab/Config-Backuper"
+    "sources": "https://github.com/Akiyy-dev/Config-Cloud-Backuper"
   },
   "license": "MIT",
   "icon": "assets/config-backuper/icon.png",
