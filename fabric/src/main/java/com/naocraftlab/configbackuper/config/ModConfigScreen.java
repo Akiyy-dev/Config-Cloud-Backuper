@@ -80,6 +80,33 @@ public class ModConfigScreen extends Screen {
                 .setTooltip(t("将着色器配置文件加入备份", "Include shader pack configuration files in the backup"))
                 .build());
 
+        // includeSchematics
+        general.addEntry(entryBuilder.startBooleanToggle(
+                        t("包含 Schematics", "Include Schematics"),
+                        config.isIncludeSchematics())
+                .setDefaultValue(true)
+                .setSaveConsumer(config::setIncludeSchematics)
+                .setTooltip(t("将 schematics 文件加入备份", "Include schematics files in the backup"))
+                .build());
+
+        // include3dSkin
+        general.addEntry(entryBuilder.startBooleanToggle(
+                        t("包含 3D-Skin", "Include 3D-Skin"),
+                        config.isInclude3dSkin())
+                .setDefaultValue(true)
+                .setSaveConsumer(config::setInclude3dSkin)
+                .setTooltip(t("将 3d-skin 文件加入备份", "Include 3d-skin files in the backup"))
+                .build());
+
+        // includeSyncmatics
+        general.addEntry(entryBuilder.startBooleanToggle(
+                        t("包含 Syncmatics", "Include Syncmatics"),
+                        config.isIncludeSyncmatics())
+                .setDefaultValue(true)
+                .setSaveConsumer(config::setIncludeSyncmatics)
+                .setTooltip(t("将 syncmatics 文件加入备份", "Include syncmatics files in the backup"))
+                .build());
+
         // compressionEnabled
         general.addEntry(entryBuilder.startBooleanToggle(
                         t("启用压缩", "Compression Enabled"),
