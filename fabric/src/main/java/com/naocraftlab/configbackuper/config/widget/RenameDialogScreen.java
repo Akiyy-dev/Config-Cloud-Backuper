@@ -1,10 +1,10 @@
 package com.naocraftlab.configbackuper.config.widget;
 
 import com.naocraftlab.configbackuper.FabricModInitializer;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 
 import java.io.IOException;
@@ -55,38 +55,42 @@ public class RenameDialogScreen extends Screen {
 
         // 确认按钮
         int confirmX = (this.width - BUTTON_WIDTH * 2 - BUTTON_SPACING) / 2;
-        this.confirmButton = this.addDrawableChild(new ButtonWidget(
-                confirmX, BUTTON_Y, BUTTON_WIDTH, 20,
+        this.confirmButton = this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("✓ 确认 / Confirm"),
-                button -> onConfirm()));
+                button -> onConfirm())
+                .position(confirmX, BUTTON_Y)
+                .size(BUTTON_WIDTH, 20)
+                .build());
 
         // 取消按钮
         int cancelX = confirmX + BUTTON_WIDTH + BUTTON_SPACING;
-        this.cancelButton = this.addDrawableChild(new ButtonWidget(
-                cancelX, BUTTON_Y, BUTTON_WIDTH, 20,
+        this.cancelButton = this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("✕ 取消 / Cancel"),
-                button -> close()));
+                button -> close())
+                .position(cancelX, BUTTON_Y)
+                .size(BUTTON_WIDTH, 20)
+                .build());
     }
 
     @Override
-    public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-        this.renderBackground(matrices);
+    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        this.renderBackground(context);
 
         // 绘制标题
-        drawCenteredText(matrices, this.textRenderer, this.title,
+        context.drawCenteredTextWithShadow(this.textRenderer, this.title,
                 this.width / 2, TITLE_Y, 0xFFFFFF);
 
         // 绘制文本框
-        this.textField.render(matrices, mouseX, mouseY, delta);
+        this.textField.render(context, mouseX, mouseY, delta);
 
         // 绘制错误信息
         if (errorMessage != null && !errorMessage.isEmpty()) {
-            drawCenteredText(matrices, this.textRenderer,
+            context.drawCenteredTextWithShadow(this.textRenderer,
                     Text.literal(errorMessage),
                     this.width / 2, BUTTON_Y + 25, 0xFF5555);
         }
 
-        super.render(matrices, mouseX, mouseY, delta);
+        super.render(context, mouseX, mouseY, delta);
     }
 
     @Override
@@ -157,9 +161,10 @@ public class RenameDialogScreen extends Screen {
         });
     }
 
-    private void close() {
+    @Override
+    public void close() {
         if (this.client != null) {
-            this.client.setScreen(this.parent);
+            this.client.setScreen(Screen.hasShiftDown() ? this.client.currentScreen : null);
         }
     }
 }
