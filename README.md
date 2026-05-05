@@ -1,10 +1,10 @@
 # <img src="icon.png" width="28"/> Config Backuper
 
-一个简单的 Minecraft 模组，用于备份游戏配置文件，支持可配置的备份路径和 WebDAV 云备份。
+一个简单的 Minecraft 模组，用于备份游戏配置文件，支持可配置的备份路径和 WebDAV 云备份，可在客户端与服务端使用。
 
 ## 功能特性
 
-- **客户端命令** — 不安装 ModMenu / Cloth Config 也可备份与管理配置（需安装 **Fabric API**）
+- **双端命令支持** — 客户端与服务端均可使用 `/config_backuper ...`（需安装 **Fabric API**）
 - **可选图形界面** — 安装 [ModMenu](https://modrinth.com/mod/modmenu) 与 [Cloth Config API](https://modrinth.com/mod/cloth-config) 后，可通过 ModMenu 打开设置界面
 - 备份游戏配置、模组配置、着色器与更多目录（见 `config/config-backuper.json`）
 - 备份文件压缩与自动清理旧备份
@@ -14,7 +14,7 @@
 
 - Minecraft 1.20+
 - Fabric Loader >=0.15.0
-- **Fabric API**（本模组注册客户端命令所必需）
+- **Fabric API**（本模组注册客户端与服务端命令所必需）
 - [ModMenu](https://modrinth.com/mod/modmenu)（可选）
 - [Cloth Config API](https://modrinth.com/mod/cloth-config)（可选，仅在使用 ModMenu 图形界面时需要）
 
