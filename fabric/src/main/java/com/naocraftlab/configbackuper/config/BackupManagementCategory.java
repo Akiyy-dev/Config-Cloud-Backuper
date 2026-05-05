@@ -5,9 +5,8 @@ import com.naocraftlab.configbackuper.config.model.BackupFileInfo;
 import com.naocraftlab.configbackuper.config.widget.BackupFileListEntry;
 import com.naocraftlab.configbackuper.config.widget.BackupNowButtonEntry;
 import com.naocraftlab.configbackuper.config.widget.DownloadFromWebDavButtonEntry;
-import com.naocraftlab.configbackuper.core.BackupLimiter;
-import com.naocraftlab.configbackuper.core.ConfigBackuper;
 import com.naocraftlab.configbackuper.core.ModConfig;
+import com.naocraftlab.configbackuper.util.BackupPaths;
 import com.naocraftlab.configbackuper.webdav.WebDavConfig;
 import com.naocraftlab.configbackuper.webdav.WebDavDownloader;
 import com.naocraftlab.configbackuper.webdav.WebDavUploader;
@@ -18,7 +17,6 @@ import net.minecraft.text.Text;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -34,8 +32,6 @@ public class BackupManagementCategory {
      * @param builder       ConfigBuilder 实例
      * @param entryBuilder  ConfigEntryBuilder 实例
      * @param isChinese     是否使用中文
-     * @param backuper      ConfigBackuper 实例
-     * @param limiter       BackupLimiter 实例
      * @param config        ModConfig 实例（用于获取备份目录、前缀、后缀）
      * @param webDavConfig  WebDAV 配置
      * @return 构建好的 ConfigCategory
@@ -44,8 +40,6 @@ public class BackupManagementCategory {
             ConfigBuilder builder,
             ConfigEntryBuilder entryBuilder,
             boolean isChinese,
-            ConfigBackuper backuper,
-            BackupLimiter limiter,
             ModConfig config,
             WebDavConfig webDavConfig
     ) {
@@ -64,7 +58,7 @@ public class BackupManagementCategory {
 
         // ===== 一键备份按钮 =====
         // 传入 parentScreen 以便备份完成后重建配置 Screen 刷新文件列表
-        category.addEntry(new BackupNowButtonEntry(backuper, limiter, builder.getParentScreen()));
+        category.addEntry(new BackupNowButtonEntry(builder.getParentScreen()));
 
         // ===== 从 WebDAV 下载按钮 =====
         WebDavDownloader webDavDownloader = new WebDavDownloader();
@@ -78,7 +72,7 @@ public class BackupManagementCategory {
         // ===== 备份文件列表 =====
         try {
             // 获取备份目录、前缀和后缀
-            Path backupFolder = resolveBackupDirectory(config);
+            Path backupFolder = BackupPaths.resolveBackupDirectory(config);
             String prefix = config.getBackupFilePrefix() != null ? config.getBackupFilePrefix() : "backup";
             String suffix = config.getBackupFileSuffix() != null ? config.getBackupFileSuffix() : ".zip";
 
@@ -108,19 +102,5 @@ public class BackupManagementCategory {
         }
 
         return category;
-    }
-
-    /**
-     * 解析备份目录路径（与 ConfigBackuper 和 BackupLimiter 中的逻辑一致）
-     */
-    private static Path resolveBackupDirectory(ModConfig config) {
-        Path folder = config.getBackupFolder();
-        if (folder == null) {
-            folder = Path.of("./config-backuper-backups");
-        }
-        if (!folder.isAbsolute()) {
-            folder = Path.of(System.getProperty("user.dir")).resolve(folder).normalize();
-        }
-        return folder;
     }
 }

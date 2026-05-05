@@ -24,10 +24,13 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-    // Cloth Config (embedded to include Kotlin stdlib)
-    include(modImplementation("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}"))
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    // ModMenu
+    // Cloth Config：可选；开发客户端运行 ModMenu 界面时使用 modLocalRuntime 安装到本地
+    modCompileOnly "me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}"
+    modLocalRuntime "me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}"
+
+    // ModMenu（可选）
     modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 
     // OkHttp for WebDAV

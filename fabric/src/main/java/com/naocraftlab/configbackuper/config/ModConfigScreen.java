@@ -247,8 +247,6 @@ public class ModConfigScreen {
                     builder,
                     entryBuilder,
                     isChinese,
-                    mod.getConfigBackuper(),
-                    mod.getBackupLimiter(),
                     config,
                     webDavConfig
             );

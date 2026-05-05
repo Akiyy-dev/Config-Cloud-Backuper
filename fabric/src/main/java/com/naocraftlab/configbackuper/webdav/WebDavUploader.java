@@ -15,13 +15,21 @@ public class WebDavUploader {
 
     /**
      * 上传备份文件到 WebDAV
+     *
      * @param backupFile 本地备份文件路径
-     * @param config WebDAV 配置
-     * @return 上传结果信息（成功返回 null，失败返回错误消息）
+     * @param config     WebDAV 配置
+     * @return 上传结果信息（成功返回 null，失败返回错误消息；未启用且非强制时返回 null 表示跳过）
      */
     public String uploadBackup(Path backupFile, WebDavConfig config) {
-        if (!config.isEnabled()) {
-            return null; // WebDAV 未启用，跳过
+        return uploadBackup(backupFile, config, false);
+    }
+
+    /**
+     * @param force 为 true 时忽略 {@link WebDavConfig#isEnabled()}，仍要求已填写 URL 与凭据
+     */
+    public String uploadBackup(Path backupFile, WebDavConfig config, boolean force) {
+        if (!config.isEnabled() && !force) {
+            return null;
         }
 
         if (config.getServerUrl() == null || config.getServerUrl().isEmpty()) {

@@ -2,8 +2,7 @@ package com.naocraftlab.configbackuper.config.widget;
 
 import com.naocraftlab.configbackuper.FabricModInitializer;
 import com.naocraftlab.configbackuper.config.ModConfigScreen;
-import com.naocraftlab.configbackuper.core.BackupLimiter;
-import com.naocraftlab.configbackuper.core.ConfigBackuper;
+import com.naocraftlab.configbackuper.core.BackupCoordinator;
 import me.shedaniel.clothconfig2.api.AbstractConfigListEntry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -24,8 +23,6 @@ public class BackupNowButtonEntry extends AbstractConfigListEntry<Void> {
     private static final int BUTTON_WIDTH = 150;
     private static final int BUTTON_HEIGHT = 20;
 
-    private final ConfigBackuper backuper;
-    private final BackupLimiter limiter;
     private final Screen parentScreen;
     private boolean isBackingUp = false;
 
@@ -35,10 +32,8 @@ public class BackupNowButtonEntry extends AbstractConfigListEntry<Void> {
     private int cachedEntryX;
     private int cachedEntryWidth;
 
-    public BackupNowButtonEntry(ConfigBackuper backuper, BackupLimiter limiter, Screen parentScreen) {
+    public BackupNowButtonEntry(Screen parentScreen) {
         super(Text.literal(""), false);
-        this.backuper = backuper;
-        this.limiter = limiter;
         this.parentScreen = parentScreen;
     }
 
@@ -118,8 +113,7 @@ public class BackupNowButtonEntry extends AbstractConfigListEntry<Void> {
         // 在后台线程执行备份
         CompletableFuture.runAsync(() -> {
             try {
-                backuper.performBackup();
-                limiter.removeOldBackups();
+                BackupCoordinator.runLocalBackupCleanupAndWebDavIfEnabled(FabricModInitializer.getInstance());
                 FabricModInitializer.getLogger().info("Manual backup completed successfully");
             } catch (Exception e) {
                 FabricModInitializer.getLogger().error("Manual backup failed", e);
