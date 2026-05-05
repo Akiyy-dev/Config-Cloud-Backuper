@@ -264,24 +264,12 @@ public class ModConfigScreen {
             // Save WebDAV configuration
             mod.saveWebDavConfig(webDavConfig);
 
-            // Reload backuper and limiter with new config, then trigger backup
+            // Reload backuper and limiter with new config (no automatic backup)
             try {
                 mod.reloadConfig();
-
-                ConfigBackuper backuper = mod.getConfigBackuper();
-                BackupLimiter limiter = mod.getBackupLimiter();
-
-                backuper.performBackup();
-                limiter.removeOldBackups();
-
-                FabricModInitializer.getLogger().info("Backup completed after config save");
-
-                // WebDAV upload
-                if (webDavConfig.isEnabled()) {
-                    uploadLatestBackup(config.getBackupFolder(), config, webDavConfig);
-                }
+                FabricModInitializer.getLogger().info("Configuration saved and reloaded");
             } catch (Exception e) {
-                FabricModInitializer.getLogger().error("Failed to perform backup after config save", e);
+                FabricModInitializer.getLogger().error("Failed to reload config after save", e);
             }
         });
 
