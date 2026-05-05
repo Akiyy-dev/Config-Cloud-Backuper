@@ -34,58 +34,61 @@ public final class ConfigBackuperServerCommands {
     }
 
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess registryAccess, CommandManager.RegistrationEnvironment environment) {
-        dispatcher.register(
-                CommandManager.literal("config_backuper")
-                        .requires(source -> source.hasPermissionLevel(2))
-                        .executes(ConfigBackuperServerCommands::usageRoot)
-                        .then(CommandManager.literal("backup")
-                                .executes(ConfigBackuperServerCommands::backup))
+        registerForPrefix(dispatcher, "config_backuper");
+        registerForPrefix(dispatcher, "server_config_backuper");
+    }
+
+    private static void registerForPrefix(CommandDispatcher<ServerCommandSource> dispatcher, String prefix) {
+        dispatcher.register(CommandManager.literal(prefix)
+                .requires(source -> source.hasPermissionLevel(2))
+                .executes(ConfigBackuperServerCommands::usageRoot)
+                .then(CommandManager.literal("backup")
+                        .executes(ConfigBackuperServerCommands::backup))
+                .then(CommandManager.literal("list")
+                        .executes(ConfigBackuperServerCommands::listLocal))
+                .then(CommandManager.literal("config")
+                        .executes(ctx -> sendLines(ctx, List.of(
+                                "用法:",
+                                "  /" + prefix + " config reload — 从磁盘重新加载配置",
+                                "  /" + prefix + " config show — 显示当前主配置",
+                                "  /" + prefix + " config set <键> <值> — 修改并保存（键见 show）",
+                                "  /" + prefix + " config help — 键名说明"
+                        )))
+                        .then(CommandManager.literal("reload")
+                                .executes(ConfigBackuperServerCommands::configReload))
+                        .then(CommandManager.literal("show")
+                                .executes(ConfigBackuperServerCommands::configShow))
+                        .then(CommandManager.literal("help")
+                                .executes(ConfigBackuperServerCommands::configHelp))
+                        .then(CommandManager.literal("set")
+                                .then(CommandManager.argument("key", StringArgumentType.string())
+                                        .then(CommandManager.argument("value", StringArgumentType.greedyString())
+                                                .executes(ConfigBackuperServerCommands::configSet)))))
+                .then(CommandManager.literal("cloud")
+                        .executes(ctx -> sendLines(ctx, List.of(
+                                "用法:",
+                                "  /" + prefix + " cloud status — WebDAV 状态（密码不显示）",
+                                "  /" + prefix + " cloud list — 列出远程目录文件",
+                                "  /" + prefix + " cloud upload [文件名] — 上传本地备份（默认最新）",
+                                "  /" + prefix + " cloud download [文件名] — 下载到本地备份目录（默认最新）",
+                                "  /" + prefix + " cloud set <字段> <值> — 字段: enabled, serverUrl, username, password, remotePath"
+                        )))
+                        .then(CommandManager.literal("status")
+                                .executes(ConfigBackuperServerCommands::cloudStatus))
                         .then(CommandManager.literal("list")
-                                .executes(ConfigBackuperServerCommands::listLocal))
-                        .then(CommandManager.literal("config")
-                                .executes(ctx -> sendLines(ctx, List.of(
-                                        "用法:",
-                                        "  /config_backuper config reload — 从磁盘重新加载配置",
-                                        "  /config_backuper config show — 显示当前主配置",
-                                        "  /config_backuper config set <键> <值> — 修改并保存（键见 show）",
-                                        "  /config_backuper config help — 键名说明"
-                                )))
-                                .then(CommandManager.literal("reload")
-                                        .executes(ConfigBackuperServerCommands::configReload))
-                                .then(CommandManager.literal("show")
-                                        .executes(ConfigBackuperServerCommands::configShow))
-                                .then(CommandManager.literal("help")
-                                        .executes(ConfigBackuperServerCommands::configHelp))
-                                .then(CommandManager.literal("set")
-                                        .then(CommandManager.argument("key", StringArgumentType.string())
-                                                .then(CommandManager.argument("value", StringArgumentType.greedyString())
-                                                        .executes(ConfigBackuperServerCommands::configSet)))))
-                        .then(CommandManager.literal("cloud")
-                                .executes(ctx -> sendLines(ctx, List.of(
-                                        "用法:",
-                                        "  /config_backuper cloud status — WebDAV 状态（密码不显示）",
-                                        "  /config_backuper cloud list — 列出远程目录文件",
-                                        "  /config_backuper cloud upload [文件名] — 上传本地备份（默认最新）",
-                                        "  /config_backuper cloud download [文件名] — 下载到本地备份目录（默认最新）",
-                                        "  /config_backuper cloud set <字段> <值> — 字段: enabled, serverUrl, username, password, remotePath"
-                                )))
-                                .then(CommandManager.literal("status")
-                                        .executes(ConfigBackuperServerCommands::cloudStatus))
-                                .then(CommandManager.literal("list")
-                                        .executes(ConfigBackuperServerCommands::cloudList))
-                                .then(CommandManager.literal("upload")
-                                        .executes(ctx -> cloudUpload(ctx, null))
-                                        .then(CommandManager.argument("file", StringArgumentType.greedyString())
-                                                .executes(ctx -> cloudUpload(ctx, StringArgumentType.getString(ctx, "file")))))
-                                .then(CommandManager.literal("download")
-                                        .executes(ctx -> cloudDownload(ctx, null))
-                                        .then(CommandManager.argument("file", StringArgumentType.greedyString())
-                                                .executes(ctx -> cloudDownload(ctx, StringArgumentType.getString(ctx, "file")))))
-                                .then(CommandManager.literal("set")
-                                        .then(CommandManager.argument("field", StringArgumentType.string())
-                                                .then(CommandManager.argument("value", StringArgumentType.greedyString())
-                                                        .executes(ConfigBackuperServerCommands::cloudSet)))))
-        );
+                                .executes(ConfigBackuperServerCommands::cloudList))
+                        .then(CommandManager.literal("upload")
+                                .executes(ctx -> cloudUpload(ctx, null))
+                                .then(CommandManager.argument("file", StringArgumentType.greedyString())
+                                        .executes(ctx -> cloudUpload(ctx, StringArgumentType.getString(ctx, "file")))))
+                        .then(CommandManager.literal("download")
+                                .executes(ctx -> cloudDownload(ctx, null))
+                                .then(CommandManager.argument("file", StringArgumentType.greedyString())
+                                        .executes(ctx -> cloudDownload(ctx, StringArgumentType.getString(ctx, "file")))))
+                        .then(CommandManager.literal("set")
+                                .then(CommandManager.argument("field", StringArgumentType.string())
+                                        .then(CommandManager.argument("value", StringArgumentType.greedyString())
+                                                .executes(ConfigBackuperServerCommands::cloudSet))))));
     }
 
     private static int usageRoot(CommandContext<ServerCommandSource> ctx) {
