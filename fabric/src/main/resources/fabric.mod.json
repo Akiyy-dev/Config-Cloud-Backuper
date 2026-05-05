@@ -17,6 +17,9 @@
     "main": [
       "com.naocraftlab.configbackuper.FabricModInitializer"
     ],
+    "client": [
+      "com.naocraftlab.configbackuper.client.ConfigBackuperClient"
+    ],
     "modmenu": [
       "com.naocraftlab.configbackuper.config.ModMenuIntegration"
     ]
@@ -25,9 +28,11 @@
   "depends": {
     "fabricloader": ">=0.15.0",
     "minecraft": ">=1.20-alpha.23.12.a",
+    "fabric-api": "*",
     "java": ">=17"
   },
-  "recommends": {
-    "cloth-config": ">=11.0.0"
+  "suggests": {
+    "cloth-config": "*",
+    "modmenu": "*"
   }
 }

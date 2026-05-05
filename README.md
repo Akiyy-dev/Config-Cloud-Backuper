@@ -4,49 +4,51 @@
 
 ## 功能特性
 
-- **可配置的备份触发** — 在配置界面保存时执行备份，不再自动在游戏启动时备份
-- **可视化配置界面** — 基于 ModMenu + Cloth Config API，所有设置可在游戏内配置
-- 备份游戏配置
-- 备份模组配置
-- 备份着色器配置
-- 备份文件压缩
-- 自动清理旧备份
-- **WebDAV 云备份** — 备份完成后自动上传到 WebDAV 服务器
+- **客户端命令** — 不安装 ModMenu / Cloth Config 也可备份与管理配置（需安装 **Fabric API**）
+- **可选图形界面** — 安装 [ModMenu](https://modrinth.com/mod/modmenu) 与 [Cloth Config API](https://modrinth.com/mod/cloth-config) 后，可通过 ModMenu 打开设置界面
+- 备份游戏配置、模组配置、着色器与更多目录（见 `config/config-backuper.json`）
+- 备份文件压缩与自动清理旧备份
+- **WebDAV** — 备份完成后可按配置自动上传；亦可通过命令列出/上传/下载
 
 ## 环境要求
 
 - Minecraft 1.20+
 - Fabric Loader >=0.15.0
-- [ModMenu](https://modrinth.com/mod/modmenu)（可选，用于访问配置界面）
-- [Cloth Config API](https://modrinth.com/mod/cloth-config)（必需）
+- **Fabric API**（本模组注册客户端命令所必需）
+- [ModMenu](https://modrinth.com/mod/modmenu)（可选）
+- [Cloth Config API](https://modrinth.com/mod/cloth-config)（可选，仅在使用 ModMenu 图形界面时需要）
+
+## 客户端命令（聊天栏输入）
+
+根命令：`/config_backuper`
+
+| 子命令 | 说明 |
+|--------|------|
+| `backup` | 执行本地备份并清理超出 `maxBackups` 的旧文件；若已在 WebDAV 配置中启用上传，则随后上传**最新**本地备份 |
+| `list` | 列出本地备份目录中符合前缀/后缀的备份文件 |
+| `config reload` | 从磁盘重新读取 `config-backuper.json` 并刷新备份器 |
+| `config show` | 显示当前主配置项与取值 |
+| `config set <键> <值>` | 修改并保存主配置（键名与 `config show` 一致，布尔值可用 `true`/`false` 等） |
+| `cloud status` | 查看 WebDAV 配置（密码以掩码显示） |
+| `cloud list` | 列出远程目录中的文件 |
+| `cloud upload [文件名]` | 将本地备份目录中的指定文件（省略则选最新）**强制**上传到 WebDAV（不要求开启「启用上传」开关，但仍需填写 URL 与凭据） |
+| `cloud download [文件名]` | 将远程文件下载到本地备份目录（省略则下载按名称排序后的最新一个） |
+| `cloud set <字段> <值>` | 写入 `config-backuper_webdav.json` 中的字段：`enabled`、`serverUrl`、`username`、`password`、`remotePath` |
+
+未带子命令时执行 `/config_backuper` 会显示简要帮助。
 
 ## 配置说明
 
-可通过 **ModMenu** → **Config Backuper** 在游戏内访问配置界面，或手动编辑 `config/config-backuper.json` 文件。
+主配置：`config/config-backuper.json`。WebDAV：`config/config-backuper_webdav.json`。亦可使用上文 `config` / `cloud` 子命令修改。
 
-### 通用设置
+### 通用与备份存储
 
-- `includeGameConfigs` — 是否备份游戏配置（默认：`true`）
-- `includeModConfigs` — 是否备份模组配置（默认：`true`）
-- `includeShaderPackConfigs` — 是否备份着色器配置（默认：`true`）
-- `compressionEnabled` — 是否启用备份压缩（默认：`true`）
+与 JSON 字段一致，主要包括：`includeGameConfigs`、`includeModConfigs`、`includeShaderPackConfigs`、`includeSchematics`、`include3dSkin`、`includeSyncmatics`、`includeDefaultConfigs`、`compressionEnabled`、`maxBackups`、`backupFolder`、`backupFilePrefix`、`backupFileSuffix`。
 
-### 备份存储
+### WebDAV（`config-backuper_webdav.json`）
 
-- `backupFolder` — 备份文件存储目录（默认：`./config-backuper-backups`）
-- `backupFilePrefix` — 备份文件名称前缀（默认：`backup`）
-- `backupFileSuffix` — 备份文件名称后缀（默认：`.zip`）
-- `maxBackups` — 最大保留备份数量（`-1` 表示不限制，默认：`10`）
-
-### WebDAV 云备份
-
-- `webdavEnabled` — 是否启用 WebDAV 上传（默认：`false`）
-- `webdavServerUrl` — WebDAV 服务器地址（例如：`https://example.com/remote.php/dav/files/user/`）
-- `webdavUsername` — WebDAV 账户用户名
-- `webdavPassword` — WebDAV 账户密码
-- `webdavRemotePath` — 服务器上的远程目录路径（默认：`/ConfigBackuper/`）
-
-> **注意：** 在游戏内配置界面保存时，会自动触发一次备份。如果启用了 WebDAV，备份文件将自动上传到配置的服务器。
+- `enabled` — 是否在**本地备份流程**结束后自动上传最新备份
+- `serverUrl`、`username`、`password`、`remotePath` — 服务器与路径
 
 ## 整合包
 
@@ -60,3 +62,5 @@
 cd fabric
 ./gradlew build
 ```
+
+开发时若要在客户端测试 ModMenu + Cloth 界面，仓库已配置 `modLocalRuntime` 的 Cloth Config；ModMenu 仍需自行加入运行实例（或 `modRuntimeOnly`）。

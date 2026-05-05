@@ -26,7 +26,15 @@ public class WebDavDownloader {
      * @return 下载结果信息（成功返回 null，失败返回错误消息）
      */
     public String downloadLatestBackup(Path localBackupDir, WebDavConfig config) {
-        if (!config.isEnabled()) {
+        return downloadBackup(localBackupDir, config, null, false);
+    }
+
+    /**
+     * @param remoteFileName 指定远程文件名；为 null 时下载按名称降序排序后的第一个文件
+     * @param force          为 true 时忽略 {@link WebDavConfig#isEnabled()}
+     */
+    public String downloadBackup(Path localBackupDir, WebDavConfig config, String remoteFileName, boolean force) {
+        if (!config.isEnabled() && !force) {
             return "WebDAV is not enabled";
         }
 
@@ -44,37 +52,69 @@ public class WebDavDownloader {
 
         FabricModInitializer.getLogger().info("Listing WebDAV remote directory: " + dirUrl);
 
-        // 列出远程文件
         List<String> remoteFiles = client.listFiles(dirUrl, auth);
 
         if (remoteFiles.isEmpty()) {
             return "No backup files found on WebDAV server";
         }
 
-        // 按文件名排序（备份文件名包含时间戳，降序取最新的）
-        // 备份文件名格式如: backup_2026-05-05_12-00-00.zip
-        List<String> sortedFiles = remoteFiles.stream()
-                .sorted(Comparator.reverseOrder())
-                .collect(Collectors.toList());
+        String chosen;
+        if (remoteFileName != null && !remoteFileName.isBlank()) {
+            if (!remoteFiles.contains(remoteFileName)) {
+                return "Remote file not found: " + remoteFileName;
+            }
+            chosen = remoteFileName;
+        } else {
+            List<String> sortedFiles = remoteFiles.stream()
+                    .sorted(Comparator.reverseOrder())
+                    .collect(Collectors.toList());
+            chosen = sortedFiles.get(0);
+        }
 
-        String latestFileName = sortedFiles.get(0);
-        FabricModInitializer.getLogger().info("Latest remote backup file: " + latestFileName);
+        FabricModInitializer.getLogger().info("WebDAV download target file: " + chosen);
 
-        // 构建远程文件 URL 和本地目标路径
-        String fileUrl = WebDavClient.buildRemoteUrl(config.getServerUrl(), config.getRemotePath(), latestFileName);
-        Path targetPath = localBackupDir.resolve(latestFileName);
+        String fileUrl = WebDavClient.buildRemoteUrl(config.getServerUrl(), config.getRemotePath(), chosen);
+        Path targetPath = localBackupDir.resolve(chosen);
 
-        // 下载文件
         FabricModInitializer.getLogger().info("Downloading from WebDAV: " + fileUrl);
         boolean success = client.downloadFile(fileUrl, auth, targetPath);
 
         if (success) {
             FabricModInitializer.getLogger().info("WebDAV download completed: " + targetPath);
-            return null; // 成功
+            return null;
         } else {
-            String errorMsg = "Failed to download backup from WebDAV: " + latestFileName;
+            String errorMsg = "Failed to download backup from WebDAV: " + chosen;
             FabricModInitializer.getLogger().error(errorMsg);
             return errorMsg;
         }
+    }
+
+    /**
+     * 校验 WebDAV 远程操作所需字段（不检查 {@link WebDavConfig#isEnabled()}，供命令行显式操作使用）
+     *
+     * @return 错误消息；成功返回 null
+     */
+    public static String validateRemoteCredentials(WebDavConfig config) {
+        if (config.getServerUrl() == null || config.getServerUrl().isEmpty()) {
+            return "未配置 WebDAV 服务器地址";
+        }
+        if (config.getUsername() == null || config.getUsername().isEmpty()
+                || config.getPassword() == null || config.getPassword().isEmpty()) {
+            return "未配置 WebDAV 用户名或密码";
+        }
+        return null;
+    }
+
+    /**
+     * 列出远程目录中的文件名（字典序降序，便于查看最新备份）；凭据无效时返回空列表
+     */
+    public List<String> listRemoteFileNames(WebDavConfig config) {
+        if (validateRemoteCredentials(config) != null) {
+            return List.of();
+        }
+        String auth = WebDavClient.buildAuth(config.getUsername(), config.getPassword());
+        String dirUrl = WebDavClient.buildRemoteDirUrl(config.getServerUrl(), config.getRemotePath());
+        List<String> remoteFiles = client.listFiles(dirUrl, auth);
+        return remoteFiles.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
     }
 }
