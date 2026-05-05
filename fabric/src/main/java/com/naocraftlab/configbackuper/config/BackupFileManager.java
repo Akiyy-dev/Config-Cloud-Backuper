@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * 备份文件管理器 - 负责列出、删除和重命名备份文件
+ * 备份文件管理器 - 负责列出和删除备份文件
  */
 public class BackupFileManager {
 
@@ -49,20 +49,6 @@ public class BackupFileManager {
     public boolean deleteBackupFile(Path filePath) {
         try {
             return Files.deleteIfExists(filePath);
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    /**
-     * 重命名备份文件
-     * @return true 如果重命名成功，false 如果失败
-     */
-    public boolean renameBackupFile(Path sourcePath, String newName) {
-        try {
-            Path targetPath = sourcePath.resolveSibling(newName);
-            Files.move(sourcePath, targetPath);
-            return true;
         } catch (IOException e) {
             return false;
         }

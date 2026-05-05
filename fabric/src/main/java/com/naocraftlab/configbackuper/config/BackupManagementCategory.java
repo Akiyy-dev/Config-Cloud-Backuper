@@ -1,5 +1,6 @@
 package com.naocraftlab.configbackuper.config;
 
+import com.naocraftlab.configbackuper.FabricModInitializer;
 import com.naocraftlab.configbackuper.config.model.BackupFileInfo;
 import com.naocraftlab.configbackuper.config.widget.BackupFileListEntry;
 import com.naocraftlab.configbackuper.config.widget.BackupNowButtonEntry;
@@ -13,7 +14,9 @@ import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
 import net.minecraft.text.Text;
 
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -58,32 +61,40 @@ public class BackupManagementCategory {
         };
 
         // ===== 一键备份按钮 =====
-        category.addEntry(new BackupNowButtonEntry(backuper, limiter, onRefresh));
+        // 传入 parentScreen 以便备份完成后重建配置 Screen 刷新文件列表
+        category.addEntry(new BackupNowButtonEntry(backuper, limiter, builder.getParentScreen()));
 
         // ===== 备份文件列表 =====
-        // 获取备份目录、前缀和后缀
-        Path backupFolder = resolveBackupDirectory(config);
-        String prefix = config.getBackupFilePrefix() != null ? config.getBackupFilePrefix() : "backup";
-        String suffix = config.getBackupFileSuffix() != null ? config.getBackupFileSuffix() : ".zip";
+        try {
+            // 获取备份目录、前缀和后缀
+            Path backupFolder = resolveBackupDirectory(config);
+            String prefix = config.getBackupFilePrefix() != null ? config.getBackupFilePrefix() : "backup";
+            String suffix = config.getBackupFileSuffix() != null ? config.getBackupFileSuffix() : ".zip";
 
-        // 扫描备份文件
-        BackupFileManager fileManager = new BackupFileManager();
-        List<BackupFileInfo> backupFiles = fileManager.listBackupFiles(backupFolder, prefix, suffix);
+            // 扫描备份文件
+            BackupFileManager fileManager = new BackupFileManager();
+            List<BackupFileInfo> backupFiles = fileManager.listBackupFiles(backupFolder, prefix, suffix);
 
-        // 限制显示数量
-        if (backupFiles.size() > MAX_DISPLAY_FILES) {
-            backupFiles = backupFiles.subList(0, MAX_DISPLAY_FILES);
+            // 限制显示数量
+            if (backupFiles.size() > MAX_DISPLAY_FILES) {
+                backupFiles = backupFiles.subList(0, MAX_DISPLAY_FILES);
+            }
+
+            // 添加文件列表控件
+            WebDavUploader webDavUploader = new WebDavUploader();
+            category.addEntry(new BackupFileListEntry(
+                    backupFiles,
+                    fileManager,
+                    onRefresh,
+                    webDavUploader,
+                    webDavConfig,
+                    builder.getParentScreen()
+            ));
+        } catch (InvalidPathException e) {
+            FabricModInitializer.getLogger().error("Invalid backup directory path in config", e);
+        } catch (Exception e) {
+            FabricModInitializer.getLogger().error("Failed to load backup file list", e);
         }
-
-        // 添加文件列表控件
-        WebDavUploader webDavUploader = new WebDavUploader();
-        category.addEntry(new BackupFileListEntry(
-                backupFiles,
-                fileManager,
-                onRefresh,
-                webDavUploader,
-                webDavConfig
-        ));
 
         return category;
     }

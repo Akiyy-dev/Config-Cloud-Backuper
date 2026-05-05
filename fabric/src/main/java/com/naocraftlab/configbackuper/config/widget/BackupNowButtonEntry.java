@@ -1,11 +1,13 @@
 package com.naocraftlab.configbackuper.config.widget;
 
 import com.naocraftlab.configbackuper.FabricModInitializer;
+import com.naocraftlab.configbackuper.config.ModConfigScreen;
 import com.naocraftlab.configbackuper.core.BackupLimiter;
 import com.naocraftlab.configbackuper.core.ConfigBackuper;
 import me.shedaniel.clothconfig2.api.AbstractConfigListEntry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.text.Text;
 
@@ -19,16 +21,25 @@ import java.util.concurrent.CompletableFuture;
  */
 public class BackupNowButtonEntry extends AbstractConfigListEntry<Void> {
 
+    private static final int BUTTON_WIDTH = 150;
+    private static final int BUTTON_HEIGHT = 20;
+
     private final ConfigBackuper backuper;
     private final BackupLimiter limiter;
-    private final Runnable onSuccess;
+    private final Screen parentScreen;
     private boolean isBackingUp = false;
 
-    public BackupNowButtonEntry(ConfigBackuper backuper, BackupLimiter limiter, Runnable onSuccess) {
+    // 缓存渲染时的按钮位置，供 mouseClicked 使用
+    private int cachedButtonX;
+    private int cachedButtonY;
+    private int cachedEntryX;
+    private int cachedEntryWidth;
+
+    public BackupNowButtonEntry(ConfigBackuper backuper, BackupLimiter limiter, Screen parentScreen) {
         super(Text.literal(""), false);
         this.backuper = backuper;
         this.limiter = limiter;
-        this.onSuccess = onSuccess;
+        this.parentScreen = parentScreen;
     }
 
     @Override
@@ -68,33 +79,35 @@ public class BackupNowButtonEntry extends AbstractConfigListEntry<Void> {
 
     @Override
     public void render(DrawContext context, int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean hovered, float tickDelta) {
-        // 绘制按钮背景
-        int buttonWidth = 150;
-        int buttonHeight = 20;
-        int buttonX = x + (entryWidth - buttonWidth) / 2;
-        int buttonY = y + (entryHeight - buttonHeight) / 2;
+        // 缓存位置信息供 mouseClicked 使用
+        this.cachedEntryX = x;
+        this.cachedEntryWidth = entryWidth;
+        this.cachedButtonX = x + (entryWidth - BUTTON_WIDTH) / 2;
+        this.cachedButtonY = y + (entryHeight - BUTTON_HEIGHT) / 2;
 
-        // 按钮颜色
+        // 绘制按钮背景
         int backgroundColor = isBackingUp ? 0xFF555555 : 0xFF4CAF50;
         int textColor = 0xFFFFFFFF;
 
         // 绘制按钮矩形
-        context.fill(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, backgroundColor);
+        context.fill(cachedButtonX, cachedButtonY, cachedButtonX + BUTTON_WIDTH, cachedButtonY + BUTTON_HEIGHT, backgroundColor);
 
         // 绘制按钮文字
         String buttonText = isBackingUp ? "⏳ 备份中..." : "📦 立即备份 / Backup Now";
         context.drawCenteredTextWithShadow(
                 MinecraftClient.getInstance().textRenderer,
                 Text.literal(buttonText),
-                buttonX + buttonWidth / 2,
-                buttonY + (buttonHeight - 8) / 2,
+                cachedButtonX + BUTTON_WIDTH / 2,
+                cachedButtonY + (BUTTON_HEIGHT - 8) / 2,
                 textColor
         );
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (!isMouseInside((int) mouseX, (int) mouseY, 0, 0, 0, 0)) {
+        // 使用缓存的按钮位置进行点击检测
+        if (mouseX < cachedButtonX || mouseX > cachedButtonX + BUTTON_WIDTH
+                || mouseY < cachedButtonY || mouseY > cachedButtonY + BUTTON_HEIGHT) {
             return false;
         }
 
@@ -112,10 +125,11 @@ public class BackupNowButtonEntry extends AbstractConfigListEntry<Void> {
                 FabricModInitializer.getLogger().error("Manual backup failed", e);
             }
         }).thenRunAsync(() -> {
-            // 在主线程更新 UI
+            // 在主线程更新 UI - 重建整个配置 Screen 以刷新文件列表
             isBackingUp = false;
-            if (onSuccess != null) {
-                onSuccess.run();
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client != null && parentScreen != null) {
+                client.setScreen(ModConfigScreen.create(parentScreen));
             }
         }, MinecraftClient.getInstance());
 
