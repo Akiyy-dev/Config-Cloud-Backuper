@@ -7,10 +7,12 @@ import com.naocraftlab.configbackuper.core.ConfigBackuper;
 import com.naocraftlab.configbackuper.core.CriticalConfigBackuperException;
 import com.naocraftlab.configbackuper.core.ModConfig;
 import com.naocraftlab.configbackuper.core.ModConfigurationManager;
+import com.naocraftlab.configbackuper.server.ConfigBackuperServerCommands;
 import com.naocraftlab.configbackuper.util.LoggerWrapper;
 import com.naocraftlab.configbackuper.util.LoggerWrapperSlf4j;
 import com.naocraftlab.configbackuper.webdav.WebDavConfig;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModMetadata;
@@ -55,6 +57,9 @@ public class FabricModInitializer implements ModInitializer {
         // 不再自动执行备份
         // configBackuper.performBackup();
         // backupLimiter.removeOldBackups();
+
+        // 服务端命令注册（客户端命令由 ConfigBackuperClient 注册）
+        CommandRegistrationCallback.EVENT.register(ConfigBackuperServerCommands::register);
     }
 
     // 公共方法
