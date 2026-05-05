@@ -4,10 +4,12 @@ import com.naocraftlab.configbackuper.FabricModInitializer;
 import com.naocraftlab.configbackuper.config.model.BackupFileInfo;
 import com.naocraftlab.configbackuper.config.widget.BackupFileListEntry;
 import com.naocraftlab.configbackuper.config.widget.BackupNowButtonEntry;
+import com.naocraftlab.configbackuper.config.widget.DownloadFromWebDavButtonEntry;
 import com.naocraftlab.configbackuper.core.BackupLimiter;
 import com.naocraftlab.configbackuper.core.ConfigBackuper;
 import com.naocraftlab.configbackuper.core.ModConfig;
 import com.naocraftlab.configbackuper.webdav.WebDavConfig;
+import com.naocraftlab.configbackuper.webdav.WebDavDownloader;
 import com.naocraftlab.configbackuper.webdav.WebDavUploader;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
@@ -63,6 +65,15 @@ public class BackupManagementCategory {
         // ===== 一键备份按钮 =====
         // 传入 parentScreen 以便备份完成后重建配置 Screen 刷新文件列表
         category.addEntry(new BackupNowButtonEntry(backuper, limiter, builder.getParentScreen()));
+
+        // ===== 从 WebDAV 下载按钮 =====
+        WebDavDownloader webDavDownloader = new WebDavDownloader();
+        category.addEntry(new DownloadFromWebDavButtonEntry(
+                webDavDownloader,
+                webDavConfig,
+                config,
+                builder.getParentScreen()
+        ));
 
         // ===== 备份文件列表 =====
         try {

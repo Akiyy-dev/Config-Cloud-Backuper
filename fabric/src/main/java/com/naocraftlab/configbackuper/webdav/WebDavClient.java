@@ -8,10 +8,18 @@ import okio.Source;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class WebDavClient {
 
@@ -94,6 +102,116 @@ public class WebDavClient {
     }
 
     /**
+     * 列出远程目录中的文件（PROPFIND）
+     * @param dirUrl 远程目录 URL
+     * @param auth   认证头
+     * @return 远程文件名列表，失败返回空列表
+     */
+    public List<String> listFiles(String dirUrl, String auth) {
+        List<String> fileNames = new ArrayList<>();
+        try {
+            // PROPFIND 请求体（请求深度为 1，只获取直接子文件/目录）
+            String requestBody = "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+                    + "<propfind xmlns=\"DAV:\"><prop>"
+                    + "<displayname/>"
+                    + "<getlastmodified/>"
+                    + "<getcontentlength/>"
+                    + "</prop></propfind>";
+
+            Request request = new Request.Builder()
+                    .url(dirUrl)
+                    .method("PROPFIND", RequestBody.create(MediaType.parse("application/xml"), requestBody))
+                    .header("Authorization", auth)
+                    .header("Depth", "1")
+                    .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    FabricModInitializer.getLogger().warn("WebDAV PROPFIND failed: " + response.code());
+                    return fileNames;
+                }
+
+                String responseXml = response.body().string();
+                // 解析 XML 响应，提取 href 标签内容
+                // 简单的正则解析，过滤掉目录本身
+                Pattern pattern = Pattern.compile("<D:href>(.*?)</D:href>", Pattern.CASE_INSENSITIVE);
+                Matcher matcher = pattern.matcher(responseXml);
+
+                String basePath = dirUrl.endsWith("/") ? dirUrl : dirUrl + "/";
+
+                while (matcher.find()) {
+                    String href = matcher.group(1);
+                    // 解码 URL 编码
+                    href = java.net.URLDecoder.decode(href, StandardCharsets.UTF_8);
+                    // 跳过目录本身
+                    if (href.endsWith("/") || href.equals(basePath) || href.equals(getPathFromUrl(dirUrl))) {
+                        continue;
+                    }
+                    // 提取文件名
+                    String fileName = href.substring(href.lastIndexOf('/') + 1);
+                    if (!fileName.isEmpty()) {
+                        fileNames.add(fileName);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            FabricModInitializer.getLogger().error("Failed to list WebDAV directory: " + dirUrl, e);
+        }
+        return fileNames;
+    }
+
+    /**
+     * 从 URL 中提取路径部分
+     */
+    private static String getPathFromUrl(String url) {
+        try {
+            java.net.URL parsedUrl = new java.net.URL(url);
+            String path = parsedUrl.getPath();
+            return path.endsWith("/") ? path : path + "/";
+        } catch (Exception e) {
+            return url;
+        }
+    }
+
+    /**
+     * 从 WebDAV 下载文件（GET）
+     * @param fileUrl    远程文件 URL
+     * @param auth       认证头
+     * @param targetPath 本地保存路径
+     * @return true 如果下载成功
+     */
+    public boolean downloadFile(String fileUrl, String auth, Path targetPath) {
+        try {
+            Request request = new Request.Builder()
+                    .url(fileUrl)
+                    .get()
+                    .header("Authorization", auth)
+                    .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    FabricModInitializer.getLogger().error("WebDAV download failed: " + response.code());
+                    return false;
+                }
+
+                // 确保父目录存在
+                Files.createDirectories(targetPath.getParent());
+
+                // 将响应体写入文件
+                try (InputStream inputStream = response.body().byteStream()) {
+                    Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                }
+
+                FabricModInitializer.getLogger().info("WebDAV download successful: " + targetPath.getFileName());
+                return true;
+            }
+        } catch (IOException e) {
+            FabricModInitializer.getLogger().error("Failed to download file from WebDAV: " + fileUrl, e);
+            return false;
+        }
+    }
+
+    /**
      * 构建认证头
      */
     public static String buildAuth(String username, String password) {
@@ -110,6 +228,16 @@ public class WebDavClient {
         String path = remotePath.startsWith("/") ? remotePath.substring(1) : remotePath;
         path = path.endsWith("/") ? path : path + "/";
         return baseUrl + path + URLEncoder.encode(fileName, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 构建远程目录 URL（不带文件名）
+     */
+    public static String buildRemoteDirUrl(String serverUrl, String remotePath) {
+        String baseUrl = serverUrl.endsWith("/") ? serverUrl : serverUrl + "/";
+        String path = remotePath.startsWith("/") ? remotePath.substring(1) : remotePath;
+        path = path.endsWith("/") ? path : path + "/";
+        return baseUrl + path;
     }
 
     /**
