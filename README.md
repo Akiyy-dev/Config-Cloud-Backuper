@@ -4,7 +4,7 @@
 
 ## 功能特性
 
-- **双端命令支持** — 客户端与服务端均可使用 `/config_backuper ...`（需安装 **Fabric API**）
+- **双端命令支持** — 客户端与服务端均可使用命令；服务端额外支持区分前缀 `/server_config_backuper ...`（需安装 **Fabric API**）
 - **可选图形界面** — 安装 [ModMenu](https://modrinth.com/mod/modmenu) 与 [Cloth Config API](https://modrinth.com/mod/cloth-config) 后，可通过 ModMenu 打开设置界面
 - 备份游戏配置、模组配置、着色器与更多目录（见 `config/config-backuper.json`）
 - 备份文件压缩与自动清理旧备份
@@ -18,9 +18,12 @@
 - [ModMenu](https://modrinth.com/mod/modmenu)（可选）
 - [Cloth Config API](https://modrinth.com/mod/cloth-config)（可选，仅在使用 ModMenu 图形界面时需要）
 
-## 客户端命令（聊天栏输入）
+## 命令说明（客户端/服务端）
 
-根命令：`/config_backuper`
+根命令前缀：
+
+- 客户端：`/config_backuper`
+- 服务端：`/config_backuper` 或 `/server_config_backuper`（双前缀，功能一致）
 
 | 子命令 | 说明 |
 |--------|------|
@@ -35,7 +38,13 @@
 | `cloud download [文件名]` | 将远程文件下载到本地备份目录（省略则下载按名称排序后的最新一个） |
 | `cloud set <字段> <值>` | 写入 `config-backuper_webdav.json` 中的字段：`enabled`、`serverUrl`、`username`、`password`、`remotePath` |
 
-未带子命令时执行 `/config_backuper` 会显示简要帮助。
+未带子命令时执行根命令会显示简要帮助。
+
+### 服务端示例
+
+- `/server_config_backuper backup`：触发服务端备份
+- `/server_config_backuper list`：查看服务端备份目录列表
+- `/server_config_backuper config show`：查看服务端当前配置
 
 ## 配置说明
 
