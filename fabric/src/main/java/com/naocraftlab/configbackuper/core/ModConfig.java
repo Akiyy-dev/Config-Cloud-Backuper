@@ -4,6 +4,10 @@ import java.nio.file.Path;
 
 /**
  * 模组配置数据类
+ * <p>
+ * 注意：backupFolder 以 String 形式存储而非 Path，以避免 Gson 在 Java 21+
+ * 模块系统下无法通过反射序列化 sun.nio.fs.WindowsPath 导致的崩溃问题。
+ * getBackupFolder() / setBackupFolder() 负责 String ↔ Path 的转换。
  */
 public class ModConfig {
 
@@ -16,7 +20,7 @@ public class ModConfig {
     private boolean includeDefaultConfigs = true;
     private int maxBackups = 10;
     private boolean compressionEnabled = true;
-    private Path backupFolder = Path.of("./config-backuper-backups");
+    private String backupFolder = "./config-backuper-backups";
     private String backupFilePrefix = "backup";
     private String backupFileSuffix = ".zip";
 
@@ -92,12 +96,18 @@ public class ModConfig {
         this.compressionEnabled = compressionEnabled;
     }
 
+    /**
+     * 获取备份文件夹路径（String → Path 转换）
+     */
     public Path getBackupFolder() {
-        return backupFolder;
+        return backupFolder != null ? Path.of(backupFolder) : Path.of("./config-backuper-backups");
     }
 
+    /**
+     * 设置备份文件夹路径（Path → String 转换）
+     */
     public void setBackupFolder(Path backupFolder) {
-        this.backupFolder = backupFolder;
+        this.backupFolder = backupFolder != null ? backupFolder.toString() : "./config-backuper-backups";
     }
 
     public String getBackupFilePrefix() {
