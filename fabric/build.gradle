@@ -24,15 +24,20 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-    // Cloth Config
-    modImplementation "me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}"
+    // Cloth Config (embedded to include Kotlin stdlib)
+    include(modImplementation("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}"))
 
     // ModMenu
     modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 
     // OkHttp for WebDAV
     include(implementation("com.squareup.okhttp3:okhttp:${project.okhttp_version}"))
-    include(implementation("com.squareup.okio:okio:${project.okio_version}"))
+    // Okio (required by OkHttp at runtime)
+    // Note: okio 3.x uses Gradle Module Metadata; the actual JAR artifact is okio-jvm
+    include(implementation("com.squareup.okio:okio-jvm:${project.okio_version}"))
+    // Kotlin stdlib (required by OkHttp/Okio at runtime)
+    include(implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.10"))
+    include(implementation("org.jetbrains.kotlin:kotlin-stdlib-common:1.9.10"))
 }
 
 processResources {
