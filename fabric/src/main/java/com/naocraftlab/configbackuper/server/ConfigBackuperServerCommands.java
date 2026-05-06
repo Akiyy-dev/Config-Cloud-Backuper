@@ -64,8 +64,57 @@ public final class ConfigBackuperServerCommands {
                                 .then(CommandManager.argument("key", StringArgumentType.string())
                                         .then(CommandManager.argument("value", StringArgumentType.greedyString())
                                                 .executes(ConfigBackuperServerCommands::configSet)))))
+                .then(CommandManager.literal("remote")
+                        .executes(ctx -> sendLines(ctx, List.of(
+                                "用法:",
+                                "  /" + prefix + " remote cloud ... — WebDAV 远端操作",
+                                "  /" + prefix + " remote server ... — 客户端上传到服务端管理"
+                        )))
+                        .then(CommandManager.literal("cloud")
+                                .executes(ctx -> sendLines(ctx, List.of(
+                                        "用法:",
+                                        "  /" + prefix + " remote cloud status — WebDAV 状态（密码不显示）",
+                                        "  /" + prefix + " remote cloud list — 列出远程目录文件",
+                                        "  /" + prefix + " remote cloud upload [文件名] — 上传本地备份（默认最新）",
+                                        "  /" + prefix + " remote cloud download [文件名] — 下载到本地备份目录（默认最新）",
+                                        "  /" + prefix + " remote cloud set <字段> <值> — 字段: enabled, serverUrl, username, password, remotePath"
+                                )))
+                                .then(CommandManager.literal("status")
+                                        .executes(ConfigBackuperServerCommands::cloudStatus))
+                                .then(CommandManager.literal("list")
+                                        .executes(ConfigBackuperServerCommands::cloudList))
+                                .then(CommandManager.literal("upload")
+                                        .executes(ctx -> cloudUpload(ctx, null))
+                                        .then(CommandManager.argument("file", StringArgumentType.greedyString())
+                                                .executes(ctx -> cloudUpload(ctx, StringArgumentType.getString(ctx, "file")))))
+                                .then(CommandManager.literal("download")
+                                        .executes(ctx -> cloudDownload(ctx, null))
+                                        .then(CommandManager.argument("file", StringArgumentType.greedyString())
+                                                .executes(ctx -> cloudDownload(ctx, StringArgumentType.getString(ctx, "file")))))
+                                .then(CommandManager.literal("set")
+                                        .then(CommandManager.argument("field", StringArgumentType.string())
+                                                .then(CommandManager.argument("value", StringArgumentType.greedyString())
+                                                        .executes(ConfigBackuperServerCommands::cloudSet)))))
+                        .then(CommandManager.literal("server")
+                                .executes(ctx -> sendLines(ctx, List.of(
+                                        "用法:",
+                                        "  /" + prefix + " remote server status — 查看客户端上传到服务端配置",
+                                        "  /" + prefix + " remote server list [玩家名] — 查看服务端已接收的上传备份",
+                                        "  /" + prefix + " remote server set <字段> <值> — 字段: enabled, folder, maxPerPlayer"
+                                )))
+                                .then(CommandManager.literal("status")
+                                        .executes(ConfigBackuperServerCommands::serverStatus))
+                                .then(CommandManager.literal("list")
+                                        .executes(ctx -> serverList(ctx, null))
+                                        .then(CommandManager.argument("player", StringArgumentType.word())
+                                                .executes(ctx -> serverList(ctx, StringArgumentType.getString(ctx, "player")))))
+                                .then(CommandManager.literal("set")
+                                        .then(CommandManager.argument("field", StringArgumentType.word())
+                                                .then(CommandManager.argument("value", StringArgumentType.greedyString())
+                                                        .executes(ConfigBackuperServerCommands::serverSet))))))
                 .then(CommandManager.literal("cloud")
                         .executes(ctx -> sendLines(ctx, List.of(
+                                "兼容路径提示：建议改用 /" + prefix + " remote cloud ...",
                                 "用法:",
                                 "  /" + prefix + " cloud status — WebDAV 状态（密码不显示）",
                                 "  /" + prefix + " cloud list — 列出远程目录文件",
@@ -91,6 +140,7 @@ public final class ConfigBackuperServerCommands {
                                                 .executes(ConfigBackuperServerCommands::cloudSet)))))
                 .then(CommandManager.literal("server")
                         .executes(ctx -> sendLines(ctx, List.of(
+                                "兼容路径提示：建议改用 /" + prefix + " remote server ...",
                                 "用法:",
                                 "  /" + prefix + " server status — 查看客户端上传到服务端配置",
                                 "  /" + prefix + " server list [玩家名] — 查看服务端已接收的上传备份",
@@ -114,8 +164,9 @@ public final class ConfigBackuperServerCommands {
                 "  backup — 执行本地备份、清理旧文件；若已启用 WebDAV 则上传最新备份",
                 "  list — 列出本地备份目录中的备份文件",
                 "  config … — 查看/修改 config-backuper.json",
-                "  cloud … — WebDAV 操作（读写 config-backuper_webdav.json）",
-                "  server … — 客户端上传到服务端的接收配置与文件管理"
+                "  remote cloud … — WebDAV 操作（推荐）",
+                "  remote server … — 客户端上传到服务端管理（推荐）",
+                "  cloud/server … — 兼容旧路径，后续版本可能移除"
         ));
     }
 
