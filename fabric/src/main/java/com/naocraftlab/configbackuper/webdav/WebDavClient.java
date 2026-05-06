@@ -101,6 +101,24 @@ public class WebDavClient {
         }
     }
 
+    public boolean uploadText(String url, String text, String auth) {
+        try {
+            RequestBody body = RequestBody.create(MediaType.parse("text/plain; charset=utf-8"), text);
+            Request request = new Request.Builder()
+                    .url(url)
+                    .put(body)
+                    .header("Authorization", auth)
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                int code = response.code();
+                return code == 201 || code == 204 || code == 200;
+            }
+        } catch (IOException e) {
+            FabricModInitializer.getLogger().error("Failed to upload text to WebDAV: " + url, e);
+            return false;
+        }
+    }
+
     /**
      * 列出远程目录中的文件（PROPFIND）
      * @param dirUrl 远程目录 URL
@@ -208,6 +226,25 @@ public class WebDavClient {
         } catch (IOException e) {
             FabricModInitializer.getLogger().error("Failed to download file from WebDAV: " + fileUrl, e);
             return false;
+        }
+    }
+
+    public String downloadText(String fileUrl, String auth) {
+        try {
+            Request request = new Request.Builder()
+                    .url(fileUrl)
+                    .get()
+                    .header("Authorization", auth)
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful() || response.body() == null) {
+                    return null;
+                }
+                return response.body().string();
+            }
+        } catch (IOException e) {
+            FabricModInitializer.getLogger().error("Failed to download text from WebDAV: " + fileUrl, e);
+            return null;
         }
     }
 

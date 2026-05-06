@@ -15,6 +15,7 @@ import java.util.Comparator;
 import java.util.List;
 
 public final class ServerSyncNetworking {
+    private static final long MAX_UPLOAD_BYTES = 50L * 1024L * 1024L; // 50 MB
     public static final Identifier CLIENT_UPLOAD_BEGIN = new Identifier("config-backuper", "client_upload_begin");
     public static final Identifier CLIENT_UPLOAD_CHUNK = new Identifier("config-backuper", "client_upload_chunk");
     public static final Identifier CLIENT_UPLOAD_END = new Identifier("config-backuper", "client_upload_end");
@@ -42,12 +43,30 @@ public final class ServerSyncNetworking {
         }
         String fileName = buf.readString(256);
         long expectedSize = buf.readLong();
+        String expectedSha256 = buf.readString(128);
+        if (!fileName.toLowerCase(java.util.Locale.ROOT).endsWith(".zip")) {
+            audit(player, "upload_rejected", "invalid extension: " + fileName);
+            player.sendMessage(Text.literal("[ConfigBackuper] 仅允许上传 .zip 备份文件"), false);
+            return;
+        }
+        if (expectedSize <= 0 || expectedSize > MAX_UPLOAD_BYTES) {
+            audit(player, "upload_rejected", "size=" + expectedSize);
+            player.sendMessage(Text.literal("[ConfigBackuper] 文件大小不合法，或超过限制 " + (MAX_UPLOAD_BYTES / (1024 * 1024)) + "MB"), false);
+            return;
+        }
+        if (expectedSha256 == null || !expectedSha256.matches("(?i)^[a-f0-9]{64}$")) {
+            audit(player, "upload_rejected", "invalid sha256");
+            player.sendMessage(Text.literal("[ConfigBackuper] 缺少或错误的 SHA-256 校验值"), false);
+            return;
+        }
         try {
-            ClientUploadStorageManager.begin(player.getUuid(), player.getGameProfile().getName(), fileName, expectedSize, cfg);
+            ClientUploadStorageManager.begin(player.getUuid(), player.getGameProfile().getName(), fileName, expectedSize, expectedSha256, cfg);
+            audit(player, "upload_begin", "file=" + fileName + ", size=" + expectedSize);
         } catch (IOException e) {
             FabricModInitializer.getLogger().error("Failed to begin client upload", e);
             player.sendMessage(Text.literal("[ConfigBackuper] 上传初始化失败: " + e.getMessage()), false);
             ClientUploadStorageManager.closeSession(player.getUuid());
+            audit(player, "upload_begin_failed", e.getMessage());
         }
     }
 
@@ -60,6 +79,7 @@ public final class ServerSyncNetworking {
             FabricModInitializer.getLogger().error("Failed to append upload chunk", e);
             player.sendMessage(Text.literal("[ConfigBackuper] 上传分片失败: " + e.getMessage()), false);
             ClientUploadStorageManager.closeSession(player.getUuid());
+            audit(player, "upload_chunk_failed", e.getMessage());
         }
     }
 
@@ -68,10 +88,12 @@ public final class ServerSyncNetworking {
         try {
             Path saved = ClientUploadStorageManager.finish(player.getUuid(), cfg);
             player.sendMessage(Text.literal("[ConfigBackuper] 上传成功: " + saved.getFileName()), false);
+            audit(player, "upload_success", "saved=" + saved);
         } catch (IOException e) {
             FabricModInitializer.getLogger().error("Failed to finish client upload", e);
             player.sendMessage(Text.literal("[ConfigBackuper] 上传完成失败: " + e.getMessage()), false);
             ClientUploadStorageManager.closeSession(player.getUuid());
+            audit(player, "upload_finish_failed", e.getMessage());
         }
     }
 
@@ -85,6 +107,11 @@ public final class ServerSyncNetworking {
             return;
         }
         if ("list".equals(action)) {
+            if (!player.hasPermissionLevel(3)) {
+                player.sendMessage(Text.literal("[ConfigBackuper][server] 权限不足（需要 OP 等级 > 2）"), false);
+                audit(player, "server_list_denied", "permission");
+                return;
+            }
             Path playerDir = ClientUploadStorageManager.resolvePlayerDir(cfg, player.getGameProfile().getName());
             if (!Files.isDirectory(playerDir)) {
                 player.sendMessage(Text.literal("[ConfigBackuper][server] 该玩家无上传备份"), false);
@@ -106,6 +133,11 @@ public final class ServerSyncNetworking {
             return;
         }
         player.sendMessage(Text.literal("[ConfigBackuper][server] 未知动作: " + action), false);
+    }
+
+    private static void audit(ServerPlayerEntity player, String action, String detail) {
+        FabricModInitializer.getLogger().info("[AUDIT] player=" + player.getGameProfile().getName()
+                + ", uuid=" + player.getUuid() + ", action=" + action + ", detail=" + detail);
     }
 
 }

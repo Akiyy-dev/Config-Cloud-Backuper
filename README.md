@@ -10,6 +10,7 @@
 - 备份游戏配置、模组配置、着色器与更多目录（见 `config/config-backuper.json`）
 - 备份文件压缩与自动清理旧备份
 - **WebDAV** — 备份完成后可按配置自动上传；亦可通过命令列出/上传/下载
+- **安全校验链** — 客户端上传仅允许 `.zip` 且限制大小，文件名净化，服务端按 SHA-256 校验并记录审计日志
 
 ## 环境要求
 
@@ -52,7 +53,7 @@
 - `/server_config_backuper list`：查看服务端备份目录列表
 - `/server_config_backuper config show`：查看服务端当前配置
 - `/server_config_backuper remote server status`：查看客户端上传到服务端配置
-- `/server_config_backuper remote server list [玩家名]`：查看某玩家上传备份列表
+- `/server_config_backuper remote server list`：查看你自己的上传备份列表（需 OP 等级 > 2）
 - `/server_config_backuper remote server set folder ./config-backuper-backups/client-uploads`：设置上传根目录
 - `/server_config_backuper remote server set maxPerPlayer 20`：设置每位玩家最多保留 20 个上传备份
 
@@ -78,6 +79,10 @@
 
 - `enabled` — 是否在**本地备份流程**结束后自动上传最新备份
 - `serverUrl`、`username`、`password`、`remotePath` — 服务器与路径
+
+WebDAV 安全行为：
+- 上传备份时会同时上传同名校验文件：`<filename>.sha256`
+- 下载备份前会先读取 `.sha256`，下载后校验 SHA-256；不一致则删除下载文件并报错
 
 ## 整合包
 

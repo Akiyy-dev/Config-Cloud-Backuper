@@ -1,6 +1,7 @@
 package com.naocraftlab.configbackuper.webdav;
 
 import com.naocraftlab.configbackuper.FabricModInitializer;
+import com.naocraftlab.configbackuper.util.HashUtils;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -59,8 +60,22 @@ public class WebDavUploader {
         boolean success = client.uploadFile(remoteUrl, file, auth);
 
         if (success) {
-            FabricModInitializer.getLogger().info("WebDAV upload successful: " + file.getName());
-            return null; // 成功
+            try {
+                String sha256 = HashUtils.sha256Hex(backupFile);
+                String shaUrl = WebDavClient.buildRemoteUrl(config.getServerUrl(), config.getRemotePath(), file.getName() + ".sha256");
+                boolean shaOk = client.uploadText(shaUrl, sha256, auth);
+                if (!shaOk) {
+                    String errorMsg = "WebDAV upload succeeded but sha256 upload failed: " + file.getName();
+                    FabricModInitializer.getLogger().error(errorMsg);
+                    return errorMsg;
+                }
+                FabricModInitializer.getLogger().info("WebDAV upload successful (with sha256): " + file.getName());
+                return null;
+            } catch (Exception e) {
+                String errorMsg = "WebDAV upload succeeded but local sha256 generation failed: " + file.getName();
+                FabricModInitializer.getLogger().error(errorMsg, e);
+                return errorMsg;
+            }
         } else {
             String errorMsg = "WebDAV upload failed: " + file.getName();
             FabricModInitializer.getLogger().error(errorMsg);

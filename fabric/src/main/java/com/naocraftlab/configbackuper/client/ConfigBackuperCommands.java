@@ -11,6 +11,7 @@ import com.naocraftlab.configbackuper.core.BackupCoordinator;
 import com.naocraftlab.configbackuper.core.ModConfig;
 import com.naocraftlab.configbackuper.core.ModConfigurationManager;
 import com.naocraftlab.configbackuper.server.ServerSyncNetworking;
+import com.naocraftlab.configbackuper.util.HashUtils;
 import com.naocraftlab.configbackuper.util.BackupPaths;
 import com.naocraftlab.configbackuper.webdav.WebDavConfig;
 import com.naocraftlab.configbackuper.webdav.WebDavDownloader;
@@ -408,6 +409,7 @@ public final class ConfigBackuperCommands {
             PacketByteBuf begin = new PacketByteBuf(io.netty.buffer.Unpooled.buffer());
             begin.writeString(file.getFileName().toString());
             begin.writeLong(all.length);
+            begin.writeString(HashUtils.sha256Hex(file));
             ClientPlayNetworking.send(ServerSyncNetworking.CLIENT_UPLOAD_BEGIN, begin);
 
             final int chunkSize = 32 * 1024;
