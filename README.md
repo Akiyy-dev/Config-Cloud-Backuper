@@ -21,7 +21,7 @@
 
 ## 命令说明（客户端/服务端）
 
-推荐使用新的分组路径：`remote cloud` / `remote server`。原 `cloud` / `server` 仍兼容可用，但后续版本可能移除。
+命令统一使用分组路径：`remote cloud` / `remote server`。
 
 根命令前缀：
 
@@ -58,7 +58,7 @@
 
 ## 配置说明
 
-主配置：`config/config-backuper.json`。WebDAV：`config/config-backuper_webdav.json`。亦可使用上文 `config` / `cloud` / `server` 子命令修改。
+主配置：`config/config-backuper.json`。WebDAV：`config/config-backuper_webdav.json`。亦可使用上文 `config` / `remote cloud` / `remote server` 子命令修改。
 
 ### 通用与备份存储
 
