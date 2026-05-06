@@ -8,6 +8,7 @@ import com.naocraftlab.configbackuper.core.CriticalConfigBackuperException;
 import com.naocraftlab.configbackuper.core.ModConfig;
 import com.naocraftlab.configbackuper.core.ModConfigurationManager;
 import com.naocraftlab.configbackuper.server.ConfigBackuperServerCommands;
+import com.naocraftlab.configbackuper.server.ServerSyncNetworking;
 import com.naocraftlab.configbackuper.util.LoggerWrapper;
 import com.naocraftlab.configbackuper.util.LoggerWrapperSlf4j;
 import com.naocraftlab.configbackuper.webdav.WebDavConfig;
@@ -60,6 +61,7 @@ public class FabricModInitializer implements ModInitializer {
 
         // 服务端命令注册（客户端命令由 ConfigBackuperClient 注册）
         CommandRegistrationCallback.EVENT.register(ConfigBackuperServerCommands::register);
+        ServerSyncNetworking.register();
     }
 
     // 公共方法

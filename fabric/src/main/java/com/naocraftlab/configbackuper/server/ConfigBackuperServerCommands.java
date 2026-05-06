@@ -88,7 +88,24 @@ public final class ConfigBackuperServerCommands {
                         .then(CommandManager.literal("set")
                                 .then(CommandManager.argument("field", StringArgumentType.string())
                                         .then(CommandManager.argument("value", StringArgumentType.greedyString())
-                                                .executes(ConfigBackuperServerCommands::cloudSet))))));
+                                                .executes(ConfigBackuperServerCommands::cloudSet)))))
+                .then(CommandManager.literal("server")
+                        .executes(ctx -> sendLines(ctx, List.of(
+                                "用法:",
+                                "  /" + prefix + " server status — 查看客户端上传到服务端配置",
+                                "  /" + prefix + " server list [玩家名] — 查看服务端已接收的上传备份",
+                                "  /" + prefix + " server set <字段> <值> — 字段: enabled, folder, maxPerPlayer"
+                        )))
+                        .then(CommandManager.literal("status")
+                                .executes(ConfigBackuperServerCommands::serverStatus))
+                        .then(CommandManager.literal("list")
+                                .executes(ctx -> serverList(ctx, null))
+                                .then(CommandManager.argument("player", StringArgumentType.word())
+                                        .executes(ctx -> serverList(ctx, StringArgumentType.getString(ctx, "player")))))
+                        .then(CommandManager.literal("set")
+                                .then(CommandManager.argument("field", StringArgumentType.word())
+                                        .then(CommandManager.argument("value", StringArgumentType.greedyString())
+                                                .executes(ConfigBackuperServerCommands::serverSet))))));
     }
 
     private static int usageRoot(CommandContext<ServerCommandSource> ctx) {
@@ -97,7 +114,8 @@ public final class ConfigBackuperServerCommands {
                 "  backup — 执行本地备份、清理旧文件；若已启用 WebDAV 则上传最新备份",
                 "  list — 列出本地备份目录中的备份文件",
                 "  config … — 查看/修改 config-backuper.json",
-                "  cloud … — WebDAV 操作（读写 config-backuper_webdav.json）"
+                "  cloud … — WebDAV 操作（读写 config-backuper_webdav.json）",
+                "  server … — 客户端上传到服务端的接收配置与文件管理"
         ));
     }
 
@@ -160,7 +178,10 @@ public final class ConfigBackuperServerCommands {
                 "maxBackups = " + c.getMaxBackups(),
                 "backupFolder = " + c.getBackupFolder(),
                 "backupFilePrefix = " + c.getBackupFilePrefix(),
-                "backupFileSuffix = " + c.getBackupFileSuffix()
+                "backupFileSuffix = " + c.getBackupFileSuffix(),
+                "clientUploadToServerEnabled = " + c.isClientUploadToServerEnabled(),
+                "clientUploadFolder = " + c.getClientUploadFolder(),
+                "clientUploadMaxBackupsPerPlayer = " + c.getClientUploadMaxBackupsPerPlayer()
         ));
     }
 
@@ -169,7 +190,10 @@ public final class ConfigBackuperServerCommands {
                 "布尔键取值: true / false（或 1 / 0, on / off）",
                 "maxBackups: 整数，-1 表示不限制数量",
                 "backupFolder: 路径字符串（相对路径相对于服务端运行目录）",
-                "backupFilePrefix / backupFileSuffix: 字符串"
+                "backupFilePrefix / backupFileSuffix: 字符串",
+                "clientUploadToServerEnabled: 是否允许客户端上传到服务端",
+                "clientUploadFolder: 服务端存放客户端上传文件的根目录",
+                "clientUploadMaxBackupsPerPlayer: 每位玩家最大保留数（-1 不限制）"
         ));
     }
 
@@ -208,6 +232,9 @@ public final class ConfigBackuperServerCommands {
             case "backupFolder" -> c.setBackupFolder(Path.of(value.trim()));
             case "backupFilePrefix" -> c.setBackupFilePrefix(value);
             case "backupFileSuffix" -> c.setBackupFileSuffix(value);
+            case "clientUploadToServerEnabled" -> c.setClientUploadToServerEnabled(parseBool(value));
+            case "clientUploadFolder" -> c.setClientUploadFolder(Path.of(value.trim()));
+            case "clientUploadMaxBackupsPerPlayer" -> c.setClientUploadMaxBackupsPerPlayer(Integer.parseInt(value.trim()));
             default -> throw new IllegalArgumentException("未知配置键: " + key + "（使用 /config_backuper config show 查看键名）");
         }
     }
@@ -325,6 +352,66 @@ public final class ConfigBackuperServerCommands {
         mod.saveWebDavConfig(w);
         sendFeedback(ctx.getSource(), () -> Text.literal("已保存 WebDAV 配置: " + field));
         return Command.SINGLE_SUCCESS;
+    }
+
+    private static int serverStatus(CommandContext<ServerCommandSource> ctx) {
+        ModConfig c = FabricModInitializer.getInstance().getModConfigurationManager().read();
+        return sendLines(ctx, List.of(
+                "enabled = " + c.isClientUploadToServerEnabled(),
+                "folder = " + c.getClientUploadFolder(),
+                "maxPerPlayer = " + c.getClientUploadMaxBackupsPerPlayer()
+        ));
+    }
+
+    private static int serverList(CommandContext<ServerCommandSource> ctx, String playerNameOrNull) {
+        ModConfig c = FabricModInitializer.getInstance().getModConfigurationManager().read();
+        String playerName = playerNameOrNull == null || playerNameOrNull.isBlank()
+                ? ctx.getSource().getName() : playerNameOrNull.trim();
+        Path dir = ClientUploadStorageManager.resolvePlayerDir(c, playerName);
+        if (!java.nio.file.Files.isDirectory(dir)) {
+            sendFeedback(ctx.getSource(), () -> Text.literal("未找到玩家上传目录: " + playerName));
+            return Command.SINGLE_SUCCESS;
+        }
+        try (var files = java.nio.file.Files.list(dir)) {
+            var sorted = files.filter(java.nio.file.Files::isRegularFile)
+                    .sorted(java.util.Comparator.comparingLong((Path p) -> p.toFile().lastModified()).reversed())
+                    .toList();
+            sendFeedback(ctx.getSource(), () -> Text.literal("玩家 " + playerName + " 上传备份: " + sorted.size()));
+            int n = Math.min(sorted.size(), 40);
+            for (int i = 0; i < n; i++) {
+                Path p = sorted.get(i);
+                sendFeedback(ctx.getSource(), () -> Text.literal("  " + p.getFileName()));
+            }
+        } catch (Exception e) {
+            ctx.getSource().sendError(Text.literal("读取上传目录失败: " + e.getMessage()));
+        }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int serverSet(CommandContext<ServerCommandSource> ctx) {
+        String field = StringArgumentType.getString(ctx, "field").trim().toLowerCase(Locale.ROOT);
+        String value = StringArgumentType.getString(ctx, "value");
+        FabricModInitializer mod = FabricModInitializer.getInstance();
+        ModConfigurationManager mgr = mod.getModConfigurationManager();
+        ModConfig c = mgr.read();
+        try {
+            switch (field) {
+                case "enabled" -> c.setClientUploadToServerEnabled(parseBool(value));
+                case "folder" -> c.setClientUploadFolder(Path.of(value.trim()));
+                case "maxperplayer" -> c.setClientUploadMaxBackupsPerPlayer(Integer.parseInt(value.trim()));
+                default -> {
+                    ctx.getSource().sendError(Text.literal("未知字段: " + field + "（enabled / folder / maxPerPlayer）"));
+                    return 0;
+                }
+            }
+            mgr.save(c);
+            mod.reloadConfig();
+            sendFeedback(ctx.getSource(), () -> Text.literal("已保存服务端上传设置: " + field));
+            return Command.SINGLE_SUCCESS;
+        } catch (Exception e) {
+            ctx.getSource().sendError(Text.literal("保存失败: " + e.getMessage()));
+            return 0;
+        }
     }
 
     private static String nullToEmpty(String s) {
