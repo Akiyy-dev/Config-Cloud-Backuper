@@ -15,52 +15,31 @@ body:
           required: true
         - label: 我已经尝试过在最新的代码中修复这个问题
           required: false
-  - type: dropdown
-    id: env-os
+
+  - type: input
+    id: env-minecraft-ver
     attributes:
-      label: 操作系统
-      description: 选择运行 NoneBot 的系统
-      options:
-        - Windows
-        - MacOS
-        - Linux
-        - Other
+      label: Minecraft 版本
+      description: 填写运行该 Mod 的 Minecraft 版本
+      placeholder: e.g. 1.21.1
     validations:
       required: true
 
   - type: input
-    id: env-python-ver
+    id: env-mod-ver
     attributes:
-      label: Python 版本
-      description: 填写运行 NoneBot 的 Python 版本
-      placeholder: e.g. 3.11.0
-    validations:
-      required: true
-
-  - type: input
-    id: env-nb-ver
-    attributes:
-      label: NoneBot 版本
-      description: 填写 NoneBot 版本
+      label: Mod 版本
+      description: 填写该 Mod 版本
       placeholder: e.g. 2.3.0
     validations:
       required: true
 
   - type: input
-    id: env-adapter
+    id: env-fabric-api-ver
     attributes:
-      label: 适配器
-      description: 填写 NoneBot 加载使用的适配器
-      placeholder: e.g. OneBot V11
-    validations:
-      required: true
-
-  - type: input
-    id: env-plugin
-    attributes:
-      label: 插件版本
-      description: 填写使用的插件版本
-      placeholder: e.g. 0.1.0
+      label: Fabric API 版本
+      description: 填写使用的 Fabric API 版本
+      placeholder: e.g. 0.83.0
     validations:
       required: true
 
@@ -99,8 +78,8 @@ body:
   - type: textarea
     id: config
     attributes:
-      label: Nonebot 配置项
-      description: Nonebot 配置项 (如果你的配置文件中包含敏感信息，请自行删除)
+      label: Mod 配置项
+      description: Mod 配置项 (如果你的配置文件中包含敏感信息，请自行删除)
       render: dotenv
       placeholder: |
         # e.g.
