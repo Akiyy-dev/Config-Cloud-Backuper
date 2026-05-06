@@ -10,17 +10,21 @@ import com.naocraftlab.configbackuper.config.model.BackupFileInfo;
 import com.naocraftlab.configbackuper.core.BackupCoordinator;
 import com.naocraftlab.configbackuper.core.ModConfig;
 import com.naocraftlab.configbackuper.core.ModConfigurationManager;
+import com.naocraftlab.configbackuper.server.ServerSyncNetworking;
 import com.naocraftlab.configbackuper.util.BackupPaths;
 import com.naocraftlab.configbackuper.webdav.WebDavConfig;
 import com.naocraftlab.configbackuper.webdav.WebDavDownloader;
 import com.naocraftlab.configbackuper.webdav.WebDavUploader;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.text.Text;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
@@ -84,6 +88,21 @@ public final class ConfigBackuperCommands {
                                         .then(ClientCommandManager.argument("field", StringArgumentType.string())
                                                 .then(ClientCommandManager.argument("value", StringArgumentType.greedyString())
                                                         .executes(ConfigBackuperCommands::cloudSet)))))
+                        .then(ClientCommandManager.literal("server")
+                                .executes(ctx -> sendLines(ctx, List.of(
+                                        "用法:",
+                                        "  /config_backuper server status — 查询服务端客户端上传配置",
+                                        "  /config_backuper server list — 查询当前玩家在服务端的上传备份列表",
+                                        "  /config_backuper server upload [文件名] — 上传本地备份到服务端（默认最新）"
+                                )))
+                                .then(ClientCommandManager.literal("status")
+                                        .executes(ConfigBackuperCommands::serverStatus))
+                                .then(ClientCommandManager.literal("list")
+                                        .executes(ConfigBackuperCommands::serverList))
+                                .then(ClientCommandManager.literal("upload")
+                                        .executes(ctx -> serverUpload(ctx, null))
+                                        .then(ClientCommandManager.argument("file", StringArgumentType.greedyString())
+                                                .executes(ctx -> serverUpload(ctx, StringArgumentType.getString(ctx, "file"))))))
         );
     }
 
@@ -93,7 +112,8 @@ public final class ConfigBackuperCommands {
                 "  backup — 执行本地备份、清理旧文件；若已启用 WebDAV 则上传最新备份",
                 "  list — 列出本地备份目录中的备份文件",
                 "  config … — 查看/修改 config-backuper.json",
-                "  cloud … — WebDAV 操作（读写 config-backuper_webdav.json）"
+                "  cloud … — WebDAV 操作（读写 config-backuper_webdav.json）",
+                "  server … — 上传本地备份到服务端并查询服务端接收状态"
         ));
     }
 
@@ -157,7 +177,10 @@ public final class ConfigBackuperCommands {
                 "maxBackups = " + c.getMaxBackups(),
                 "backupFolder = " + c.getBackupFolder(),
                 "backupFilePrefix = " + c.getBackupFilePrefix(),
-                "backupFileSuffix = " + c.getBackupFileSuffix()
+                "backupFileSuffix = " + c.getBackupFileSuffix(),
+                "clientUploadToServerEnabled = " + c.isClientUploadToServerEnabled(),
+                "clientUploadFolder = " + c.getClientUploadFolder(),
+                "clientUploadMaxBackupsPerPlayer = " + c.getClientUploadMaxBackupsPerPlayer()
         ));
     }
 
@@ -166,7 +189,10 @@ public final class ConfigBackuperCommands {
                 "布尔键取值: true / false（或 1 / 0, on / off）",
                 "maxBackups: 整数，-1 表示不限制数量",
                 "backupFolder: 路径字符串（相对路径相对于游戏运行目录）",
-                "backupFilePrefix / backupFileSuffix: 字符串"
+                "backupFilePrefix / backupFileSuffix: 字符串",
+                "clientUploadToServerEnabled: 是否允许客户端上传到服务端",
+                "clientUploadFolder: 服务端保存客户端上传文件的根目录",
+                "clientUploadMaxBackupsPerPlayer: 每位玩家最大保留数（-1 不限制）"
         ));
     }
 
@@ -205,6 +231,9 @@ public final class ConfigBackuperCommands {
             case "backupFolder" -> c.setBackupFolder(Path.of(value.trim()));
             case "backupFilePrefix" -> c.setBackupFilePrefix(value);
             case "backupFileSuffix" -> c.setBackupFileSuffix(value);
+            case "clientUploadToServerEnabled" -> c.setClientUploadToServerEnabled(parseBool(value));
+            case "clientUploadFolder" -> c.setClientUploadFolder(Path.of(value.trim()));
+            case "clientUploadMaxBackupsPerPlayer" -> c.setClientUploadMaxBackupsPerPlayer(Integer.parseInt(value.trim()));
             default -> throw new IllegalArgumentException("未知配置键: " + key + "（使用 /config_backuper config show 查看键名）");
         }
     }
@@ -323,6 +352,81 @@ public final class ConfigBackuperCommands {
         mod.saveWebDavConfig(w);
         ctx.getSource().sendFeedback(Text.literal("已保存 WebDAV 配置: " + field));
         return Command.SINGLE_SUCCESS;
+    }
+
+    private static int serverStatus(CommandContext<FabricClientCommandSource> ctx) {
+        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.CLIENT_SERVER_ACTION)) {
+            ctx.getSource().sendError(Text.literal("当前未连接支持该功能的服务端。"));
+            return 0;
+        }
+        sendServerAction("status");
+        ctx.getSource().sendFeedback(Text.literal("已请求服务端上传配置状态（结果会由服务端返回聊天消息）。"));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int serverList(CommandContext<FabricClientCommandSource> ctx) {
+        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.CLIENT_SERVER_ACTION)) {
+            ctx.getSource().sendError(Text.literal("当前未连接支持该功能的服务端。"));
+            return 0;
+        }
+        sendServerAction("list");
+        ctx.getSource().sendFeedback(Text.literal("已请求服务端列出你的上传备份（结果会由服务端返回聊天消息）。"));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int serverUpload(CommandContext<FabricClientCommandSource> ctx, String fileNameOrNull) {
+        FabricClientCommandSource source = ctx.getSource();
+        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.CLIENT_UPLOAD_BEGIN)) {
+            source.sendError(Text.literal("当前未连接支持该功能的服务端。"));
+            return 0;
+        }
+        ModConfig cfg = FabricModInitializer.getInstance().getModConfigurationManager().read();
+        Path file;
+        if (fileNameOrNull != null && !fileNameOrNull.isBlank()) {
+            file = BackupPaths.resolveBackupDirectory(cfg).resolve(fileNameOrNull.trim());
+        } else {
+            file = BackupCoordinator.findLatestBackupPath(cfg);
+        }
+        if (file == null || !Files.isRegularFile(file)) {
+            source.sendError(Text.literal("未找到要上传到服务端的本地备份文件。"));
+            return 0;
+        }
+        source.sendFeedback(Text.literal("正在上传到服务端: " + file.getFileName()));
+        CompletableFuture.runAsync(() -> uploadFileToServer(source, file));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static void uploadFileToServer(FabricClientCommandSource source, Path file) {
+        try {
+            byte[] all = Files.readAllBytes(file);
+            PacketByteBuf begin = new PacketByteBuf(io.netty.buffer.Unpooled.buffer());
+            begin.writeString(file.getFileName().toString());
+            begin.writeLong(all.length);
+            ClientPlayNetworking.send(ServerSyncNetworking.CLIENT_UPLOAD_BEGIN, begin);
+
+            final int chunkSize = 32 * 1024;
+            for (int pos = 0; pos < all.length; pos += chunkSize) {
+                int len = Math.min(chunkSize, all.length - pos);
+                byte[] chunk = new byte[len];
+                System.arraycopy(all, pos, chunk, 0, len);
+                PacketByteBuf part = new PacketByteBuf(io.netty.buffer.Unpooled.buffer());
+                part.writeVarInt(len);
+                part.writeByteArray(chunk);
+                ClientPlayNetworking.send(ServerSyncNetworking.CLIENT_UPLOAD_CHUNK, part);
+            }
+
+            ClientPlayNetworking.send(ServerSyncNetworking.CLIENT_UPLOAD_END, new PacketByteBuf(io.netty.buffer.Unpooled.buffer()));
+            source.getClient().execute(() -> source.sendFeedback(Text.literal("上传分片已发送，等待服务端确认。")));
+        } catch (Exception e) {
+            FabricModInitializer.getLogger().error("Upload to server failed", e);
+            source.getClient().execute(() -> source.sendError(Text.literal("上传到服务端失败: " + e.getMessage())));
+        }
+    }
+
+    private static void sendServerAction(String action) {
+        PacketByteBuf req = new PacketByteBuf(io.netty.buffer.Unpooled.buffer());
+        req.writeString(action);
+        ClientPlayNetworking.send(ServerSyncNetworking.CLIENT_SERVER_ACTION, req);
     }
 
     private static String nullToEmpty(String s) {

@@ -23,6 +23,9 @@ public class ModConfig {
     private String backupFolder = "./config-backuper-backups";
     private String backupFilePrefix = "backup";
     private String backupFileSuffix = ".zip";
+    private boolean clientUploadToServerEnabled = true;
+    private String clientUploadFolder = "./config-backuper-backups/client-uploads";
+    private int clientUploadMaxBackupsPerPlayer = 10;
 
     public boolean isIncludeGameConfigs() {
         return includeGameConfigs;
@@ -124,5 +127,29 @@ public class ModConfig {
 
     public void setBackupFileSuffix(String backupFileSuffix) {
         this.backupFileSuffix = backupFileSuffix;
+    }
+
+    public boolean isClientUploadToServerEnabled() {
+        return clientUploadToServerEnabled;
+    }
+
+    public void setClientUploadToServerEnabled(boolean clientUploadToServerEnabled) {
+        this.clientUploadToServerEnabled = clientUploadToServerEnabled;
+    }
+
+    public Path getClientUploadFolder() {
+        return clientUploadFolder != null ? Path.of(clientUploadFolder) : Path.of("./config-backuper-backups/client-uploads");
+    }
+
+    public void setClientUploadFolder(Path clientUploadFolder) {
+        this.clientUploadFolder = clientUploadFolder != null ? clientUploadFolder.toString() : "./config-backuper-backups/client-uploads";
+    }
+
+    public int getClientUploadMaxBackupsPerPlayer() {
+        return clientUploadMaxBackupsPerPlayer;
+    }
+
+    public void setClientUploadMaxBackupsPerPlayer(int clientUploadMaxBackupsPerPlayer) {
+        this.clientUploadMaxBackupsPerPlayer = clientUploadMaxBackupsPerPlayer;
     }
 }
