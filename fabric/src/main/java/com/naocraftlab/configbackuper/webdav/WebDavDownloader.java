@@ -1,6 +1,7 @@
 package com.naocraftlab.configbackuper.webdav;
 
 import com.naocraftlab.configbackuper.FabricModInitializer;
+import com.naocraftlab.configbackuper.util.HashUtils;
 
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -75,13 +76,31 @@ public class WebDavDownloader {
 
         String fileUrl = WebDavClient.buildRemoteUrl(config.getServerUrl(), config.getRemotePath(), chosen);
         Path targetPath = localBackupDir.resolve(chosen);
+        String shaUrl = WebDavClient.buildRemoteUrl(config.getServerUrl(), config.getRemotePath(), chosen + ".sha256");
 
         FabricModInitializer.getLogger().info("Downloading from WebDAV: " + fileUrl);
+        String expectedSha = client.downloadText(shaUrl, auth);
+        if (expectedSha == null || expectedSha.isBlank()) {
+            return "Missing checksum file on WebDAV: " + chosen + ".sha256";
+        }
+        expectedSha = expectedSha.trim().toLowerCase();
+        if (!expectedSha.matches("^[a-f0-9]{64}$")) {
+            return "Invalid checksum format on WebDAV: " + chosen + ".sha256";
+        }
         boolean success = client.downloadFile(fileUrl, auth, targetPath);
 
         if (success) {
-            FabricModInitializer.getLogger().info("WebDAV download completed: " + targetPath);
-            return null;
+            try {
+                String actualSha = HashUtils.sha256Hex(targetPath);
+                if (!actualSha.equalsIgnoreCase(expectedSha)) {
+                    java.nio.file.Files.deleteIfExists(targetPath);
+                    return "Checksum mismatch for downloaded file: " + chosen;
+                }
+                FabricModInitializer.getLogger().info("WebDAV download completed and verified: " + targetPath);
+                return null;
+            } catch (Exception e) {
+                return "Downloaded file checksum verification failed: " + e.getMessage();
+            }
         } else {
             String errorMsg = "Failed to download backup from WebDAV: " + chosen;
             FabricModInitializer.getLogger().error(errorMsg);

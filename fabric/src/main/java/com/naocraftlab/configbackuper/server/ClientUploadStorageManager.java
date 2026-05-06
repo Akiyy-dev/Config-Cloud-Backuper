@@ -2,6 +2,7 @@ package com.naocraftlab.configbackuper.server;
 
 import com.naocraftlab.configbackuper.FabricModInitializer;
 import com.naocraftlab.configbackuper.core.ModConfig;
+import com.naocraftlab.configbackuper.util.HashUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -9,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.MessageDigest;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.UUID;
@@ -21,19 +23,20 @@ import java.util.stream.Stream;
 public class ClientUploadStorageManager {
     private static final Map<UUID, UploadSession> SESSIONS = new ConcurrentHashMap<>();
 
-    public static void begin(UUID playerId, String playerName, String fileName, long expectedSize, ModConfig cfg) throws IOException {
+    public static void begin(UUID playerId, String playerName, String fileName, long expectedSize, String expectedSha256, ModConfig cfg) throws IOException {
         closeSession(playerId);
         Path playerDir = resolvePlayerDir(cfg, playerName);
         Files.createDirectories(playerDir);
         String safeFileName = sanitizeFileName(fileName);
         Path tempPath = playerDir.resolve(safeFileName + ".uploading");
         OutputStream out = Files.newOutputStream(tempPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
-        SESSIONS.put(playerId, new UploadSession(playerName, safeFileName, expectedSize, 0L, tempPath, out));
+        SESSIONS.put(playerId, new UploadSession(playerName, safeFileName, expectedSize, expectedSha256, 0L, tempPath, out, HashUtils.newSha256Digest()));
     }
 
     public static void append(UUID playerId, byte[] chunk) throws IOException {
         UploadSession s = requireSession(playerId);
         s.out.write(chunk);
+        s.digest.update(chunk);
         s.written += chunk.length;
         if (s.written > s.expectedSize) {
             throw new IOException("Uploaded size exceeded expected size");
@@ -48,6 +51,12 @@ public class ClientUploadStorageManager {
             Files.deleteIfExists(s.tempPath);
             SESSIONS.remove(playerId);
             throw new IOException("Uploaded size mismatch");
+        }
+        String actualSha256 = HashUtils.toHex(s.digest.digest());
+        if (!actualSha256.equalsIgnoreCase(s.expectedSha256)) {
+            Files.deleteIfExists(s.tempPath);
+            SESSIONS.remove(playerId);
+            throw new IOException("Uploaded file hash mismatch");
         }
         Path finalPath = s.tempPath.getParent().resolve(s.fileName);
         Files.move(s.tempPath, finalPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
@@ -129,17 +138,21 @@ public class ClientUploadStorageManager {
         private final String playerName;
         private final String fileName;
         private final long expectedSize;
+        private final String expectedSha256;
         private long written;
         private final Path tempPath;
         private final OutputStream out;
+        private final MessageDigest digest;
 
-        private UploadSession(String playerName, String fileName, long expectedSize, long written, Path tempPath, OutputStream out) {
+        private UploadSession(String playerName, String fileName, long expectedSize, String expectedSha256, long written, Path tempPath, OutputStream out, MessageDigest digest) {
             this.playerName = playerName;
             this.fileName = fileName;
             this.expectedSize = expectedSize;
+            this.expectedSha256 = expectedSha256;
             this.written = written;
             this.tempPath = tempPath;
             this.out = out;
+            this.digest = digest;
         }
     }
 }

@@ -11,6 +11,7 @@ import com.naocraftlab.configbackuper.core.BackupCoordinator;
 import com.naocraftlab.configbackuper.core.ModConfig;
 import com.naocraftlab.configbackuper.core.ModConfigurationManager;
 import com.naocraftlab.configbackuper.server.ServerSyncNetworking;
+import com.naocraftlab.configbackuper.util.HashUtils;
 import com.naocraftlab.configbackuper.util.BackupPaths;
 import com.naocraftlab.configbackuper.webdav.WebDavConfig;
 import com.naocraftlab.configbackuper.webdav.WebDavDownloader;
@@ -18,7 +19,6 @@ import com.naocraftlab.configbackuper.webdav.WebDavUploader;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.text.Text;
@@ -361,7 +361,7 @@ public final class ConfigBackuperCommands {
     }
 
     private static int serverStatus(CommandContext<FabricClientCommandSource> ctx) {
-        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.CLIENT_SERVER_ACTION)) {
+        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.ServerActionPayload.ID)) {
             ctx.getSource().sendError(Text.literal("当前未连接支持该功能的服务端。"));
             return 0;
         }
@@ -371,7 +371,7 @@ public final class ConfigBackuperCommands {
     }
 
     private static int serverList(CommandContext<FabricClientCommandSource> ctx) {
-        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.CLIENT_SERVER_ACTION)) {
+        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.ServerActionPayload.ID)) {
             ctx.getSource().sendError(Text.literal("当前未连接支持该功能的服务端。"));
             return 0;
         }
@@ -382,7 +382,7 @@ public final class ConfigBackuperCommands {
 
     private static int serverUpload(CommandContext<FabricClientCommandSource> ctx, String fileNameOrNull) {
         FabricClientCommandSource source = ctx.getSource();
-        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.CLIENT_UPLOAD_BEGIN)) {
+        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.UploadBeginPayload.ID)) {
             source.sendError(Text.literal("当前未连接支持该功能的服务端。"));
             return 0;
         }
@@ -405,23 +405,21 @@ public final class ConfigBackuperCommands {
     private static void uploadFileToServer(FabricClientCommandSource source, Path file) {
         try {
             byte[] all = Files.readAllBytes(file);
-            PacketByteBuf begin = new PacketByteBuf(io.netty.buffer.Unpooled.buffer());
-            begin.writeString(file.getFileName().toString());
-            begin.writeLong(all.length);
-            ClientPlayNetworking.send(ServerSyncNetworking.CLIENT_UPLOAD_BEGIN, begin);
+            ClientPlayNetworking.send(new ServerSyncNetworking.UploadBeginPayload(
+                    file.getFileName().toString(),
+                    all.length,
+                    HashUtils.sha256Hex(file)
+            ));
 
             final int chunkSize = 32 * 1024;
             for (int pos = 0; pos < all.length; pos += chunkSize) {
                 int len = Math.min(chunkSize, all.length - pos);
                 byte[] chunk = new byte[len];
                 System.arraycopy(all, pos, chunk, 0, len);
-                PacketByteBuf part = new PacketByteBuf(io.netty.buffer.Unpooled.buffer());
-                part.writeVarInt(len);
-                part.writeByteArray(chunk);
-                ClientPlayNetworking.send(ServerSyncNetworking.CLIENT_UPLOAD_CHUNK, part);
+                ClientPlayNetworking.send(new ServerSyncNetworking.UploadChunkPayload(chunk));
             }
 
-            ClientPlayNetworking.send(ServerSyncNetworking.CLIENT_UPLOAD_END, new PacketByteBuf(io.netty.buffer.Unpooled.buffer()));
+            ClientPlayNetworking.send(new ServerSyncNetworking.UploadEndPayload());
             source.getClient().execute(() -> source.sendFeedback(Text.literal("上传分片已发送，等待服务端确认。")));
         } catch (Exception e) {
             FabricModInitializer.getLogger().error("Upload to server failed", e);
@@ -430,9 +428,7 @@ public final class ConfigBackuperCommands {
     }
 
     private static void sendServerAction(String action) {
-        PacketByteBuf req = new PacketByteBuf(io.netty.buffer.Unpooled.buffer());
-        req.writeString(action);
-        ClientPlayNetworking.send(ServerSyncNetworking.CLIENT_SERVER_ACTION, req);
+        ClientPlayNetworking.send(new ServerSyncNetworking.ServerActionPayload(action));
     }
 
     private static String nullToEmpty(String s) {

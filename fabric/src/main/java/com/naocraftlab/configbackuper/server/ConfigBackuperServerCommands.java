@@ -99,15 +99,14 @@ public final class ConfigBackuperServerCommands {
                                 .executes(ctx -> sendLines(ctx, List.of(
                                         "用法:",
                                         "  /" + prefix + " remote server status — 查看客户端上传到服务端配置",
-                                        "  /" + prefix + " remote server list [玩家名] — 查看服务端已接收的上传备份",
+                                        "  /" + prefix + " remote server list — 查看你自己的上传备份（需 OP 等级 > 2）",
                                         "  /" + prefix + " remote server set <字段> <值> — 字段: enabled, folder, maxPerPlayer"
                                 )))
                                 .then(CommandManager.literal("status")
                                         .executes(ConfigBackuperServerCommands::serverStatus))
                                 .then(CommandManager.literal("list")
-                                        .executes(ctx -> serverList(ctx, null))
-                                        .then(CommandManager.argument("player", StringArgumentType.word())
-                                                .executes(ctx -> serverList(ctx, StringArgumentType.getString(ctx, "player")))))
+                                        .requires(source -> source.hasPermissionLevel(3))
+                                        .executes(ConfigBackuperServerCommands::serverList))
                                 .then(CommandManager.literal("set")
                                         .then(CommandManager.argument("field", StringArgumentType.word())
                                                 .then(CommandManager.argument("value", StringArgumentType.greedyString())
@@ -370,10 +369,9 @@ public final class ConfigBackuperServerCommands {
         ));
     }
 
-    private static int serverList(CommandContext<ServerCommandSource> ctx, String playerNameOrNull) {
+    private static int serverList(CommandContext<ServerCommandSource> ctx) {
         ModConfig c = FabricModInitializer.getInstance().getModConfigurationManager().read();
-        String playerName = playerNameOrNull == null || playerNameOrNull.isBlank()
-                ? ctx.getSource().getName() : playerNameOrNull.trim();
+        String playerName = ctx.getSource().getName();
         Path dir = ClientUploadStorageManager.resolvePlayerDir(c, playerName);
         if (!java.nio.file.Files.isDirectory(dir)) {
             sendFeedback(ctx.getSource(), () -> Text.literal("未找到玩家上传目录: " + playerName));
