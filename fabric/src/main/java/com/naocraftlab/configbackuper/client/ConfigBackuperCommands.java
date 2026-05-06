@@ -63,46 +63,52 @@ public final class ConfigBackuperCommands {
                                         .then(ClientCommandManager.argument("key", StringArgumentType.string())
                                                 .then(ClientCommandManager.argument("value", StringArgumentType.greedyString())
                                                         .executes(ConfigBackuperCommands::configSet)))))
-                        .then(ClientCommandManager.literal("cloud")
+                        .then(ClientCommandManager.literal("remote")
                                 .executes(ctx -> sendLines(ctx, List.of(
                                         "用法:",
-                                        "  /config_backuper cloud status — WebDAV 状态（密码不显示）",
-                                        "  /config_backuper cloud list — 列出远程目录文件",
-                                        "  /config_backuper cloud upload [文件名] — 上传本地备份（默认最新）",
-                                        "  /config_backuper cloud download [文件名] — 下载到本地备份目录（默认最新）",
-                                        "  /config_backuper cloud set <字段> <值> — 字段: enabled, serverUrl, username, password, remotePath"
+                                        "  /config_backuper remote cloud ... — WebDAV 远端操作",
+                                        "  /config_backuper remote server ... — 客户端上传到服务端操作"
                                 )))
-                                .then(ClientCommandManager.literal("status")
-                                        .executes(ConfigBackuperCommands::cloudStatus))
-                                .then(ClientCommandManager.literal("list")
-                                        .executes(ConfigBackuperCommands::cloudList))
-                                .then(ClientCommandManager.literal("upload")
-                                        .executes(ctx -> cloudUpload(ctx, null))
-                                        .then(ClientCommandManager.argument("file", StringArgumentType.greedyString())
-                                                .executes(ctx -> cloudUpload(ctx, StringArgumentType.getString(ctx, "file")))))
-                                .then(ClientCommandManager.literal("download")
-                                        .executes(ctx -> cloudDownload(ctx, null))
-                                        .then(ClientCommandManager.argument("file", StringArgumentType.greedyString())
-                                                .executes(ctx -> cloudDownload(ctx, StringArgumentType.getString(ctx, "file")))))
-                                .then(ClientCommandManager.literal("set")
-                                        .then(ClientCommandManager.argument("field", StringArgumentType.string())
-                                                .then(ClientCommandManager.argument("value", StringArgumentType.greedyString())
-                                                        .executes(ConfigBackuperCommands::cloudSet)))))
-                        .then(ClientCommandManager.literal("server")
-                                .executes(ctx -> sendLines(ctx, List.of(
-                                        "用法:",
-                                        "  /config_backuper server status — 查询服务端客户端上传配置",
-                                        "  /config_backuper server list — 查询当前玩家在服务端的上传备份列表",
-                                        "  /config_backuper server upload [文件名] — 上传本地备份到服务端（默认最新）"
-                                )))
-                                .then(ClientCommandManager.literal("status")
-                                        .executes(ConfigBackuperCommands::serverStatus))
-                                .then(ClientCommandManager.literal("list")
-                                        .executes(ConfigBackuperCommands::serverList))
-                                .then(ClientCommandManager.literal("upload")
-                                        .executes(ctx -> serverUpload(ctx, null))
-                                        .then(ClientCommandManager.argument("file", StringArgumentType.greedyString())
-                                                .executes(ctx -> serverUpload(ctx, StringArgumentType.getString(ctx, "file"))))))
+                                .then(ClientCommandManager.literal("cloud")
+                                        .executes(ctx -> sendLines(ctx, List.of(
+                                                "用法:",
+                                                "  /config_backuper remote cloud status — WebDAV 状态（密码不显示）",
+                                                "  /config_backuper remote cloud list — 列出远程目录文件",
+                                                "  /config_backuper remote cloud upload [文件名] — 上传本地备份（默认最新）",
+                                                "  /config_backuper remote cloud download [文件名] — 下载到本地备份目录（默认最新）",
+                                                "  /config_backuper remote cloud set <字段> <值> — 字段: enabled, serverUrl, username, password, remotePath"
+                                        )))
+                                        .then(ClientCommandManager.literal("status")
+                                                .executes(ConfigBackuperCommands::cloudStatus))
+                                        .then(ClientCommandManager.literal("list")
+                                                .executes(ConfigBackuperCommands::cloudList))
+                                        .then(ClientCommandManager.literal("upload")
+                                                .executes(ctx -> cloudUpload(ctx, null))
+                                                .then(ClientCommandManager.argument("file", StringArgumentType.greedyString())
+                                                        .executes(ctx -> cloudUpload(ctx, StringArgumentType.getString(ctx, "file")))))
+                                        .then(ClientCommandManager.literal("download")
+                                                .executes(ctx -> cloudDownload(ctx, null))
+                                                .then(ClientCommandManager.argument("file", StringArgumentType.greedyString())
+                                                        .executes(ctx -> cloudDownload(ctx, StringArgumentType.getString(ctx, "file")))))
+                                        .then(ClientCommandManager.literal("set")
+                                                .then(ClientCommandManager.argument("field", StringArgumentType.string())
+                                                        .then(ClientCommandManager.argument("value", StringArgumentType.greedyString())
+                                                                .executes(ConfigBackuperCommands::cloudSet)))))
+                                .then(ClientCommandManager.literal("server")
+                                        .executes(ctx -> sendLines(ctx, List.of(
+                                                "用法:",
+                                                "  /config_backuper remote server status — 查询服务端客户端上传配置",
+                                                "  /config_backuper remote server list — 查询当前玩家在服务端的上传备份列表",
+                                                "  /config_backuper remote server upload [文件名] — 上传本地备份到服务端（默认最新）"
+                                        )))
+                                        .then(ClientCommandManager.literal("status")
+                                                .executes(ConfigBackuperCommands::serverStatus))
+                                        .then(ClientCommandManager.literal("list")
+                                                .executes(ConfigBackuperCommands::serverList))
+                                        .then(ClientCommandManager.literal("upload")
+                                                .executes(ctx -> serverUpload(ctx, null))
+                                                .then(ClientCommandManager.argument("file", StringArgumentType.greedyString())
+                                                        .executes(ctx -> serverUpload(ctx, StringArgumentType.getString(ctx, "file")))))))
         );
     }
 
@@ -112,8 +118,8 @@ public final class ConfigBackuperCommands {
                 "  backup — 执行本地备份、清理旧文件；若已启用 WebDAV 则上传最新备份",
                 "  list — 列出本地备份目录中的备份文件",
                 "  config … — 查看/修改 config-backuper.json",
-                "  cloud … — WebDAV 操作（读写 config-backuper_webdav.json）",
-                "  server … — 上传本地备份到服务端并查询服务端接收状态"
+                "  remote cloud … — WebDAV 操作（推荐）",
+                "  remote server … — 上传本地备份到服务端（推荐）"
         ));
     }
 

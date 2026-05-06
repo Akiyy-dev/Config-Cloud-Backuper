@@ -21,6 +21,8 @@
 
 ## 命令说明（客户端/服务端）
 
+命令统一使用分组路径：`remote cloud` / `remote server`。
+
 根命令前缀：
 
 - 客户端：`/config_backuper`
@@ -33,14 +35,14 @@
 | `config reload` | 从磁盘重新读取 `config-backuper.json` 并刷新备份器 |
 | `config show` | 显示当前主配置项与取值 |
 | `config set <键> <值>` | 修改并保存主配置（键名与 `config show` 一致，布尔值可用 `true`/`false` 等） |
-| `cloud status` | 查看 WebDAV 配置（密码以掩码显示） |
-| `cloud list` | 列出远程目录中的文件 |
-| `cloud upload [文件名]` | 将本地备份目录中的指定文件（省略则选最新）**强制**上传到 WebDAV（不要求开启「启用上传」开关，但仍需填写 URL 与凭据） |
-| `cloud download [文件名]` | 将远程文件下载到本地备份目录（省略则下载按名称排序后的最新一个） |
-| `cloud set <字段> <值>` | 写入 `config-backuper_webdav.json` 中的字段：`enabled`、`serverUrl`、`username`、`password`、`remotePath` |
-| `server status` | （客户端）查询服务端“客户端上传”配置状态 |
-| `server list` | （客户端）查询当前玩家在服务端的已上传备份列表 |
-| `server upload [文件名]` | （客户端）上传本地备份到服务端（省略文件名则上传最新） |
+| `remote cloud status` | 查看 WebDAV 配置（密码以掩码显示） |
+| `remote cloud list` | 列出远程目录中的文件 |
+| `remote cloud upload [文件名]` | 将本地备份目录中的指定文件（省略则选最新）**强制**上传到 WebDAV（不要求开启「启用上传」开关，但仍需填写 URL 与凭据） |
+| `remote cloud download [文件名]` | 将远程文件下载到本地备份目录（省略则下载按名称排序后的最新一个） |
+| `remote cloud set <字段> <值>` | 写入 `config-backuper_webdav.json` 中的字段：`enabled`、`serverUrl`、`username`、`password`、`remotePath` |
+| `remote server status` | （客户端）查询服务端“客户端上传”配置状态 |
+| `remote server list` | （客户端）查询当前玩家在服务端的已上传备份列表 |
+| `remote server upload [文件名]` | （客户端）上传本地备份到服务端（省略文件名则上传最新） |
 
 未带子命令时执行根命令会显示简要帮助。
 
@@ -49,14 +51,14 @@
 - `/server_config_backuper backup`：触发服务端备份
 - `/server_config_backuper list`：查看服务端备份目录列表
 - `/server_config_backuper config show`：查看服务端当前配置
-- `/server_config_backuper server status`：查看客户端上传到服务端配置
-- `/server_config_backuper server list [玩家名]`：查看某玩家上传备份列表
-- `/server_config_backuper server set folder ./config-backuper-backups/client-uploads`：设置上传根目录
-- `/server_config_backuper server set maxPerPlayer 20`：设置每位玩家最多保留 20 个上传备份
+- `/server_config_backuper remote server status`：查看客户端上传到服务端配置
+- `/server_config_backuper remote server list [玩家名]`：查看某玩家上传备份列表
+- `/server_config_backuper remote server set folder ./config-backuper-backups/client-uploads`：设置上传根目录
+- `/server_config_backuper remote server set maxPerPlayer 20`：设置每位玩家最多保留 20 个上传备份
 
 ## 配置说明
 
-主配置：`config/config-backuper.json`。WebDAV：`config/config-backuper_webdav.json`。亦可使用上文 `config` / `cloud` / `server` 子命令修改。
+主配置：`config/config-backuper.json`。WebDAV：`config/config-backuper_webdav.json`。亦可使用上文 `config` / `remote cloud` / `remote server` 子命令修改。
 
 ### 通用与备份存储
 
