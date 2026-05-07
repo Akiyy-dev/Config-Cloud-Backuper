@@ -1,7 +1,9 @@
 # =============================================================================
-# Release — 发布构建与 Assets 上传
+# Release — 发布构建、Assets 上传与平台分发
 # =============================================================================
-# 在 GitHub Release 发布时触发，构建 Fabric 模组并将 JAR 上传到 Release Assets。
+# 在 GitHub Release 发布时触发，构建 Fabric 模组并：
+# 1) 上传 JAR 到 GitHub Release Assets
+# 2) 自动发布到 Modrinth 与 CurseForge
 # 仅当 Release tag 符合 v*.*.* 格式（如 v1.0.0、v2.3.1）时执行。
 # =============================================================================
 
@@ -84,3 +86,26 @@ jobs:
           body: ${{ github.event.release.body }}
           draft: false
           prerelease: ${{ github.event.release.prerelease }}
+
+      # ---- 自动发布到 Modrinth / CurseForge ----
+      # 需要预先配置：
+      # - Secrets: MODRINTH_TOKEN, CURSEFORGE_TOKEN
+      # - Variables: MODRINTH_PROJECT_ID, CURSEFORGE_PROJECT_ID
+      - name: Publish to Modrinth and CurseForge
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+
+          files: /tmp/release-assets/*.jar
+          name: ${{ github.event.release.name }}
+          version: ${{ github.event.release.tag_name }}
+          changelog: ${{ github.event.release.body }}
+
+          loaders: fabric
+          game-versions: 1.21.1
+
+          version-type: ${{ github.event.release.prerelease && 'beta' || 'release' }}
+          retry-attempts: 3
