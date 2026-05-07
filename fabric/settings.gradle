@@ -6,4 +6,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "config-backuper-fabric"
+rootProject.name = "configcloudbackuper-fabric"

@@ -6,7 +6,7 @@
 
 ```
 游戏启动 (onInitialize)
-  ├── 读取配置文件 (config/config-backuper.json)
+  ├── 读取配置文件 (config/config-cloud-backuper.json)
   │   └── ModConfigurationManager.read() → ModConfig
   ├── 创建 ConfigBackuper(LOGGER, modConfig)
   ├── 创建 BackupLimiter(LOGGER, modConfig)
@@ -48,7 +48,7 @@ WebDAV 上传（可选）
 ### 新增文件结构
 
 ```
-fabric/src/main/java/com/naocraftlab/configbackuper/
+fabric/src/main/java/com/configcloudbackuper/configbackuper/
   ├── FabricModInitializer.java          # [修改] 移除自动备份
   ├── config/
   │   ├── ModConfigScreen.java           # [新增] Cloth Config 配置界面
@@ -62,7 +62,7 @@ fabric/src/main/java/com/naocraftlab/configbackuper/
 
 fabric/src/main/resources/
   ├── fabric.mod.json                    # [修改] 添加 ModMenu 入口
-  └── assets/config-backuper/
+  └── assets/config-cloud-backuper/
       └── icon.png                       # 现有图标
 ```
 
@@ -147,7 +147,7 @@ public static void triggerBackup() {
    "entrypoints": {
      "main": [...],
      "modmenu": [
-       "com.naocraftlab.configbackuper.config.ModMenuIntegration"
+       "com.configcloudbackuper.config.ModMenuIntegration"
      ]
    }
    ```
