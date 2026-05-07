@@ -1,5 +1,7 @@
 # <img src="icon.png" width="28"/> Config Cloud Backuper
 
+[English README](README.en.md)
+
 一个简单的 Minecraft 模组，用于备份游戏配置文件，支持可配置的备份路径和 WebDAV 云备份，可在客户端与服务端使用。
 
 ## 功能特性
