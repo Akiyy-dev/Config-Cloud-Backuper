@@ -20,7 +20,7 @@
 ### 目录结构
 
 ```
-fabric/src/main/java/com/naocraftlab/configbackuper/config/
+fabric/src/main/java/com/configcloudbackuper/configbackuper/config/
 ├── ModConfigScreen.java              # 修改：新增第4个分类
 ├── ModMenuIntegration.java           # 不变
 ├── BackupManagementCategory.java     # 新增
@@ -104,7 +104,7 @@ classDiagram
 
 ## 4. 详细设计
 
-### 4.1 [`BackupFileInfo`](fabric/src/main/java/com/naocraftlab/configbackuper/config/model/BackupFileInfo.java) — 数据模型
+### 4.1 [`BackupFileInfo`](fabric/src/main/java/com/configcloudbackuper/configbackuper/config/model/BackupFileInfo.java) — 数据模型
 
 纯数据类，封装单个备份文件的信息：
 
@@ -127,7 +127,7 @@ public class BackupFileInfo {
 }
 ```
 
-### 4.2 [`BackupFileManager`](fabric/src/main/java/com/naocraftlab/configbackuper/config/BackupFileManager.java) — 文件操作逻辑层
+### 4.2 [`BackupFileManager`](fabric/src/main/java/com/configcloudbackuper/configbackuper/config/BackupFileManager.java) — 文件操作逻辑层
 
 职责：
 - 扫描备份目录，按 prefix + suffix 过滤文件
@@ -177,7 +177,7 @@ public class BackupFileManager {
 }
 ```
 
-### 4.3 [`BackupNowButtonEntry`](fabric/src/main/java/com/naocraftlab/configbackuper/config/widget/BackupNowButtonEntry.java) — 一键备份按钮
+### 4.3 [`BackupNowButtonEntry`](fabric/src/main/java/com/configcloudbackuper/configbackuper/config/widget/BackupNowButtonEntry.java) — 一键备份按钮
 
 继承 `AbstractConfigEntry<Void>`，渲染一个全宽按钮。
 
@@ -227,7 +227,7 @@ public class BackupNowButtonEntry extends AbstractConfigEntry<Void> {
 }
 ```
 
-### 4.4 [`BackupFileListEntry`](fabric/src/main/java/com/naocraftlab/configbackuper/config/widget/BackupFileListEntry.java) — 文件列表
+### 4.4 [`BackupFileListEntry`](fabric/src/main/java/com/configcloudbackuper/configbackuper/config/widget/BackupFileListEntry.java) — 文件列表
 
 继承 `AbstractConfigEntry<Void>`，渲染一个可滚动的文件列表。
 
@@ -286,7 +286,7 @@ public class BackupFileListEntry extends AbstractConfigEntry<Void> {
 }
 ```
 
-### 4.5 [`RenameDialogScreen`](fabric/src/main/java/com/naocraftlab/configbackuper/config/widget/RenameDialogScreen.java) — 重命名对话框
+### 4.5 [`RenameDialogScreen`](fabric/src/main/java/com/configcloudbackuper/configbackuper/config/widget/RenameDialogScreen.java) — 重命名对话框
 
 一个轻量级 Minecraft `Screen`，包含：
 - 标题文字：「重命名备份文件」/「Rename Backup File」
@@ -316,9 +316,9 @@ public class RenameDialogScreen extends Screen {
 }
 ```
 
-### 4.6 [`BackupManagementCategory`](fabric/src/main/java/com/naocraftlab/configbackuper/config/BackupManagementCategory.java) — 栏目组装器
+### 4.6 [`BackupManagementCategory`](fabric/src/main/java/com/configcloudbackuper/configbackuper/config/BackupManagementCategory.java) — 栏目组装器
 
-静态工具方法，在 [`ModConfigScreen`](fabric/src/main/java/com/naocraftlab/configbackuper/config/ModConfigScreen.java) 中调用。
+静态工具方法，在 [`ModConfigScreen`](fabric/src/main/java/com/configcloudbackuper/configbackuper/config/ModConfigScreen.java) 中调用。
 
 ```java
 public class BackupManagementCategory {
@@ -422,7 +422,7 @@ Runnable refreshAction = () -> {
 
 ## 6. 与现有代码的集成
 
-### 6.1 修改 [`ModConfigScreen`](fabric/src/main/java/com/naocraftlab/configbackuper/config/ModConfigScreen.java)
+### 6.1 修改 [`ModConfigScreen`](fabric/src/main/java/com/configcloudbackuper/configbackuper/config/ModConfigScreen.java)
 
 在 `build()` 方法的末尾、`setSavingRunnable` 之前，新增：
 

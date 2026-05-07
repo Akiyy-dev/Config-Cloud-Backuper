@@ -1,27 +1,28 @@
 {
   "schemaVersion": 1,
-  "id": "config-backuper",
+  "id": "config-cloud-backuper",
   "version": "${version}",
-  "name": "Config Backuper",
+  "name": "Config Cloud Backuper",
   "description": "A simple Minecraft mod that automatically backs up game configurations, supports configurable backup paths and WebDAV cloud backup.",
   "authors": [
-    "Akiyy Dev"
+    "Akiyy"
   ],
   "contact": {
-    "sources": "https://github.com/Akiyy-dev/Config-Cloud-Backuper"
+    "sources": "https://github.com/Akiyy-dev/Config-Cloud-Backuper",
+    "issues": "https://github.com/Akiyy-dev/Config-Cloud-Backuper/issues"
   },
   "license": "MIT",
-  "icon": "assets/config-backuper/icon.png",
+  "icon": "assets/config-cloud-backuper/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.naocraftlab.configbackuper.FabricModInitializer"
+      "com.configcloudbackuper.FabricModInitializer"
     ],
     "client": [
-      "com.naocraftlab.configbackuper.client.ConfigBackuperClient"
+      "com.configcloudbackuper.client.ConfigBackuperClient"
     ],
     "modmenu": [
-      "com.naocraftlab.configbackuper.config.ModMenuIntegration"
+      "com.configcloudbackuper.config.ModMenuIntegration"
     ]
   },
   "mixins": [],
