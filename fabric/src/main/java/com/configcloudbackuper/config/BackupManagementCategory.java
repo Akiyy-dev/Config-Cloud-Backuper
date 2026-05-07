@@ -5,6 +5,7 @@ import com.configcloudbackuper.config.model.BackupFileInfo;
 import com.configcloudbackuper.config.widget.BackupFileListEntry;
 import com.configcloudbackuper.config.widget.BackupNowButtonEntry;
 import com.configcloudbackuper.config.widget.DownloadFromWebDavButtonEntry;
+import com.configcloudbackuper.config.widget.ServerRemoteActionsEntry;
 import com.configcloudbackuper.core.ModConfig;
 import com.configcloudbackuper.util.BackupPaths;
 import com.configcloudbackuper.webdav.WebDavConfig;
@@ -68,6 +69,9 @@ public class BackupManagementCategory {
                 config,
                 builder.getParentScreen()
         ));
+
+        // ===== 服务端联动操作入口 =====
+        category.addEntry(new ServerRemoteActionsEntry(isChinese));
 
         // ===== 备份文件列表 =====
         try {
