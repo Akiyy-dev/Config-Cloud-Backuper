@@ -65,7 +65,7 @@ public class ModConfigScreen {
 
         ConfigBuilder builder = ConfigBuilder.create()
                 .setParentScreen(parent)
-                .setTitle(t(isChinese, "Config Backuper 设置", "Config Backuper Settings"));
+                .setTitle(t(isChinese, "Config Cloud Backuper 设置", "Config Cloud Backuper Settings"));
 
         ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
@@ -235,7 +235,7 @@ public class ModConfigScreen {
         webdavCategory.addEntry(entryBuilder.startStrField(
                         t(isChinese, "远程路径", "Remote Path"),
                         webDavConfig.getRemotePath())
-                .setDefaultValue("/ConfigBackuper/")
+                .setDefaultValue("/ConfigCloudBackuper/")
                 .setSaveConsumer(webDavConfig::setRemotePath)
                 .setTooltip(t(isChinese, "WebDAV 服务器上的远程目录路径",
                         "Remote directory path on WebDAV server"))

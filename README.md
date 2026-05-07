@@ -1,4 +1,4 @@
-# <img src="icon.png" width="28"/> Config Backuper
+# <img src="icon.png" width="28"/> Config Cloud Backuper
 
 一个简单的 Minecraft 模组，用于备份游戏配置文件，支持可配置的备份路径和 WebDAV 云备份，可在客户端与服务端使用。
 
@@ -14,8 +14,9 @@
 
 ## 环境要求
 
-- Minecraft 1.20+
-- Fabric Loader >=0.15.0
+- Minecraft 1.21.1
+- Fabric Loader >=0.16.0
+- Java 21+
 - **Fabric API**（本模组注册客户端与服务端命令所必需）
 - [ModMenu](https://modrinth.com/mod/modmenu)（可选）
 - [Cloth Config API](https://modrinth.com/mod/cloth-config)（可选，仅在使用 ModMenu 图形界面时需要）
@@ -24,10 +25,12 @@
 
 命令统一使用分组路径：`remote cloud` / `remote server`。
 
-根命令前缀：
+根命令前缀（当前保持兼容）：
 
 - 客户端：`/config_backuper`
 - 服务端：`/config_backuper` 或 `/server_config_backuper`（双前缀，功能一致）
+
+> 说明：为了兼容已有玩家脚本与使用习惯，命令前缀暂未改为 cloud 版本；后续如需要可在大版本中引入新前缀并保留一段时间别名。
 
 | 子命令 | 说明 |
 |--------|------|

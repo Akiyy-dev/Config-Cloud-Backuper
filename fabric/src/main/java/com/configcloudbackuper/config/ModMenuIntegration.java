@@ -14,7 +14,7 @@ public class ModMenuIntegration implements ModMenuApi {
                 MinecraftClient c = MinecraftClient.getInstance();
                 if (c.player != null) {
                     c.player.sendMessage(
-                            Text.literal("[Config Backuper] 请安装 Cloth Config API 以使用图形界面，或使用 /config_backuper 命令。"),
+                            Text.literal("[Config Cloud Backuper] 请安装 Cloth Config API 以使用图形界面，或使用 /config_backuper 命令。"),
                             false);
                 }
                 return parent;

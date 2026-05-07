@@ -114,7 +114,7 @@ public final class ConfigBackuperCommands {
 
     private static int usageRoot(CommandContext<FabricClientCommandSource> ctx) {
         return sendLines(ctx, List.of(
-                "Config Backuper 命令:",
+                "Config Cloud Backuper 命令:",
                 "  backup — 执行本地备份、清理旧文件；若已启用 WebDAV 则上传最新备份",
                 "  list — 列出本地备份目录中的备份文件",
                 "  config … — 查看/修改 config-cloud-backuper.json",

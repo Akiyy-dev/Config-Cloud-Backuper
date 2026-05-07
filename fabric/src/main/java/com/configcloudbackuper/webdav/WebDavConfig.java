@@ -5,7 +5,7 @@ public class WebDavConfig {
     private String serverUrl = "";
     private String username = "";
     private String password = "";
-    private String remotePath = "/ConfigBackuper/";
+    private String remotePath = "/ConfigCloudBackuper/";
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
