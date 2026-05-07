@@ -36,3 +36,5 @@ bin/
 ### Eclipse ###
 *.launch
 Server/
+!fabric/src/main/java/com/configcloudbackuper/server/
+!fabric/src/main/java/com/configcloudbackuper/server/*.java
