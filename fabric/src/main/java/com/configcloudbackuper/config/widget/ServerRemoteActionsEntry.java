@@ -32,6 +32,8 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
     private static volatile String resultTitle = "";
     private static volatile List<String> resultLines = List.of();
     private static volatile boolean lastSuccess = true;
+    private static volatile boolean serverSupported = false;
+    private static volatile String serverProtocol = "";
 
     private int statusX;
     private int listX;
@@ -86,9 +88,22 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
         this.uploadX = startX + (BUTTON_WIDTH + GAP) * 2;
         this.buttonY = y + (entryHeight - BUTTON_HEIGHT) / 2;
 
-        drawButton(context, statusX, buttonY, 0xFF3F51B5, isChinese ? "状态" : "Status");
-        drawButton(context, listX, buttonY, 0xFF009688, isChinese ? "列表" : "List");
-        drawButton(context, uploadX, buttonY, isUploading ? 0xFF666666 : 0xFF8E24AA, isUploading ? (isChinese ? "上传中..." : "Uploading...") : (isChinese ? "上传最新" : "Upload Latest"));
+        boolean ready = isServerReady();
+        int disabledColor = 0xFF5C5C5C;
+        drawButton(context, statusX, buttonY, ready ? 0xFF3F51B5 : disabledColor, isChinese ? "状态" : "Status");
+        drawButton(context, listX, buttonY, ready ? 0xFF009688 : disabledColor, isChinese ? "列表" : "List");
+        drawButton(context, uploadX, buttonY, ready ? (isUploading ? 0xFF666666 : 0xFF8E24AA) : disabledColor, isUploading ? (isChinese ? "上传中..." : "Uploading...") : (isChinese ? "上传最新" : "Upload Latest"));
+
+        String supportHint = ready
+                ? (isChinese ? "当前服务端已支持联动" : "Server integration supported")
+                : (isChinese ? "请在支持本模组服务端的环境下使用" : "Use this on a server with this mod installed");
+        context.drawTextWithShadow(
+                MinecraftClient.getInstance().textRenderer,
+                Text.literal(supportHint + (serverProtocol.isEmpty() ? "" : " (protocol " + serverProtocol + ")")),
+                x + 8,
+                buttonY - 12,
+                ready ? 0xFF66BB6A : 0xFFFFB74D
+        );
 
         if (!resultTitle.isEmpty()) {
             int titleColor = lastSuccess ? 0xFF66BB6A : 0xFFEF5350;
@@ -128,14 +143,26 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (inButton(mouseX, mouseY, statusX)) {
+            if (!isServerReady()) {
+                showUnsupportedHint();
+                return true;
+            }
             requestServerAction("status");
             return true;
         }
         if (inButton(mouseX, mouseY, listX)) {
+            if (!isServerReady()) {
+                showUnsupportedHint();
+                return true;
+            }
             requestServerAction("list");
             return true;
         }
         if (inButton(mouseX, mouseY, uploadX)) {
+            if (!isServerReady()) {
+                showUnsupportedHint();
+                return true;
+            }
             if (isUploading) {
                 return true;
             }
@@ -150,7 +177,7 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
     }
 
     private void requestServerAction(String action) {
-        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.ServerActionPayload.ID)) {
+        if (!isServerReady()) {
             setLocalResult(
                     isChinese ? "服务端联动结果" : "Remote Server Result",
                     false,
@@ -176,7 +203,7 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
 
     private void uploadLatestBackup() {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (!ClientPlayNetworking.canSend(ServerSyncNetworking.UploadBeginPayload.ID)) {
+        if (!isServerReady()) {
             setLocalResult(
                     isChinese ? "服务端联动结果" : "Remote Server Result",
                     false,
@@ -247,6 +274,25 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
         setLocalResult(title, success, lines);
     }
 
+    public static void updateServerCapability(boolean supported, String protocolVersion) {
+        serverSupported = supported;
+        serverProtocol = protocolVersion == null ? "" : protocolVersion;
+    }
+
+    private boolean isServerReady() {
+        return serverSupported
+                && ClientPlayNetworking.canSend(ServerSyncNetworking.ServerActionPayload.ID)
+                && ClientPlayNetworking.canSend(ServerSyncNetworking.UploadBeginPayload.ID);
+    }
+
+    private void showUnsupportedHint() {
+        setLocalResult(
+                isChinese ? "服务端联动结果" : "Remote Server Result",
+                false,
+                List.of(isChinese ? "请在支持本模组服务端的环境下使用。" : "Use this on a server with this mod installed.")
+        );
+    }
+
     private static void setLocalResult(String title, boolean success, List<String> lines) {
         resultTitle = title;
         lastSuccess = success;
@@ -255,7 +301,7 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
 
     @Override
     public int getItemHeight() {
-        return 38 + Math.max(resultLines.size(), 1) * 10;
+        return 52 + Math.max(resultLines.size(), 1) * 10;
     }
 }
 

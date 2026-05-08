@@ -25,6 +25,7 @@ public final class ServerSyncNetworking {
     public static final Identifier CLIENT_UPLOAD_END_ID = Identifier.of("config-cloud-backuper", "client_upload_end");
     public static final Identifier CLIENT_SERVER_ACTION_ID = Identifier.of("config-cloud-backuper", "client_server_action");
     public static final Identifier SERVER_ACTION_RESULT_ID = Identifier.of("config-cloud-backuper", "server_action_result");
+    public static final Identifier SERVER_CAPABILITY_ID = Identifier.of("config-cloud-backuper", "server_capability");
 
     private ServerSyncNetworking() {
     }
@@ -35,6 +36,7 @@ public final class ServerSyncNetworking {
         PayloadTypeRegistry.playC2S().register(UploadEndPayload.ID, UploadEndPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(ServerActionPayload.ID, ServerActionPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(ServerActionResultPayload.ID, ServerActionResultPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(ServerCapabilityPayload.ID, ServerCapabilityPayload.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(UploadBeginPayload.ID, (payload, context) ->
                 context.server().execute(() -> handleUploadBegin(context.player(), payload)));
@@ -44,6 +46,10 @@ public final class ServerSyncNetworking {
                 context.server().execute(() -> handleUploadEnd(context.player())));
         ServerPlayNetworking.registerGlobalReceiver(ServerActionPayload.ID, (payload, context) ->
                 context.server().execute(() -> handleServerAction(context.player(), payload)));
+    }
+
+    public static void sendCapability(ServerPlayerEntity player) {
+        ServerPlayNetworking.send(player, new ServerCapabilityPayload(true, "1"));
     }
 
     private static void handleUploadBegin(ServerPlayerEntity player, UploadBeginPayload payload) {
@@ -264,6 +270,22 @@ public final class ServerSyncNetworking {
                     }
                     return new ServerActionResultPayload(action, success, lines);
                 }
+        );
+
+        @Override
+        public Id<? extends CustomPayload> getId() {
+            return ID;
+        }
+    }
+
+    public record ServerCapabilityPayload(boolean supported, String protocolVersion) implements CustomPayload {
+        public static final Id<ServerCapabilityPayload> ID = new Id<>(SERVER_CAPABILITY_ID);
+        public static final PacketCodec<RegistryByteBuf, ServerCapabilityPayload> CODEC = PacketCodec.of(
+                (value, buf) -> {
+                    buf.writeBoolean(value.supported);
+                    buf.writeString(value.protocolVersion, 16);
+                },
+                buf -> new ServerCapabilityPayload(buf.readBoolean(), buf.readString(16))
         );
 
         @Override
