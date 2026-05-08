@@ -1,6 +1,7 @@
 package com.configcloudbackuper.config;
 
 import com.configcloudbackuper.FabricModInitializer;
+import com.configcloudbackuper.config.widget.ServerRemoteActionsEntry;
 import com.configcloudbackuper.core.BackupLimiter;
 import com.configcloudbackuper.core.ConfigBackuper;
 import com.configcloudbackuper.core.ModConfig;
@@ -253,6 +254,11 @@ public class ModConfigScreen {
         } catch (Exception e) {
             FabricModInitializer.getLogger().error("Failed to build Backup Management category", e);
         }
+
+        // ===== Remote Server =====
+        ConfigCategory remoteServerCategory = builder.getOrCreateCategory(
+                t(isChinese, "服务端联动", "Remote Server"));
+        remoteServerCategory.addEntry(new ServerRemoteActionsEntry(isChinese));
 
         // ===== Save Handler =====
         builder.setSavingRunnable(() -> {
