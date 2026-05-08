@@ -14,6 +14,7 @@ import net.minecraft.util.Identifier;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -23,6 +24,7 @@ public final class ServerSyncNetworking {
     public static final Identifier CLIENT_UPLOAD_CHUNK_ID = Identifier.of("config-cloud-backuper", "client_upload_chunk");
     public static final Identifier CLIENT_UPLOAD_END_ID = Identifier.of("config-cloud-backuper", "client_upload_end");
     public static final Identifier CLIENT_SERVER_ACTION_ID = Identifier.of("config-cloud-backuper", "client_server_action");
+    public static final Identifier SERVER_ACTION_RESULT_ID = Identifier.of("config-cloud-backuper", "server_action_result");
 
     private ServerSyncNetworking() {
     }
@@ -32,6 +34,7 @@ public final class ServerSyncNetworking {
         PayloadTypeRegistry.playC2S().register(UploadChunkPayload.ID, UploadChunkPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(UploadEndPayload.ID, UploadEndPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(ServerActionPayload.ID, ServerActionPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(ServerActionResultPayload.ID, ServerActionResultPayload.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(UploadBeginPayload.ID, (payload, context) ->
                 context.server().execute(() -> handleUploadBegin(context.player(), payload)));
@@ -108,6 +111,12 @@ public final class ServerSyncNetworking {
         String action = payload.action();
         ModConfig cfg = FabricModInitializer.getInstance().getModConfigurationManager().read();
         if ("status".equals(action)) {
+            List<String> lines = List.of(
+                    "enabled=" + cfg.isClientUploadToServerEnabled(),
+                    "folder=" + cfg.getClientUploadFolder(),
+                    "maxPerPlayer=" + cfg.getClientUploadMaxBackupsPerPlayer()
+            );
+            ServerPlayNetworking.send(player, new ServerActionResultPayload(action, true, lines));
             player.sendMessage(Text.literal("[ConfigCloudBackuper][server] enabled=" + cfg.isClientUploadToServerEnabled()), false);
             player.sendMessage(Text.literal("[ConfigCloudBackuper][server] folder=" + cfg.getClientUploadFolder()), false);
             player.sendMessage(Text.literal("[ConfigCloudBackuper][server] maxPerPlayer=" + cfg.getClientUploadMaxBackupsPerPlayer()), false);
@@ -115,12 +124,22 @@ public final class ServerSyncNetworking {
         }
         if ("list".equals(action)) {
             if (!player.hasPermissionLevel(3)) {
+                ServerPlayNetworking.send(player, new ServerActionResultPayload(
+                        action,
+                        false,
+                        List.of("权限不足（需要 OP 等级 > 2）")
+                ));
                 player.sendMessage(Text.literal("[ConfigCloudBackuper][server] 权限不足（需要 OP 等级 > 2）"), false);
                 audit(player, "server_list_denied", "permission");
                 return;
             }
             Path playerDir = ClientUploadStorageManager.resolvePlayerDir(cfg, player.getGameProfile().getName());
             if (!Files.isDirectory(playerDir)) {
+                ServerPlayNetworking.send(player, new ServerActionResultPayload(
+                        action,
+                        true,
+                        List.of("该玩家无上传备份")
+                ));
                 player.sendMessage(Text.literal("[ConfigCloudBackuper][server] 该玩家无上传备份"), false);
                 return;
             }
@@ -128,17 +147,31 @@ public final class ServerSyncNetworking {
                 List<Path> sorted = files.filter(Files::isRegularFile)
                         .sorted(Comparator.comparingLong((Path p) -> p.toFile().lastModified()).reversed())
                         .toList();
+                List<String> lines = new ArrayList<>();
+                lines.add(player.getGameProfile().getName() + " 上传备份: " + sorted.size());
                 player.sendMessage(Text.literal("[ConfigCloudBackuper][server] " + player.getGameProfile().getName() + " 上传备份: " + sorted.size()), false);
                 int n = Math.min(sorted.size(), 40);
                 for (int i = 0; i < n; i++) {
                     Path p = sorted.get(i);
+                    lines.add(p.getFileName().toString());
                     player.sendMessage(Text.literal("  " + p.getFileName()), false);
                 }
+                ServerPlayNetworking.send(player, new ServerActionResultPayload(action, true, lines));
             } catch (IOException e) {
+                ServerPlayNetworking.send(player, new ServerActionResultPayload(
+                        action,
+                        false,
+                        List.of("列表读取失败: " + e.getMessage())
+                ));
                 player.sendMessage(Text.literal("[ConfigCloudBackuper][server] 列表读取失败: " + e.getMessage()), false);
             }
             return;
         }
+        ServerPlayNetworking.send(player, new ServerActionResultPayload(
+                action,
+                false,
+                List.of("未知动作: " + action)
+        ));
         player.sendMessage(Text.literal("[ConfigCloudBackuper][server] 未知动作: " + action), false);
     }
 
@@ -202,6 +235,35 @@ public final class ServerSyncNetworking {
         public static final PacketCodec<RegistryByteBuf, ServerActionPayload> CODEC = PacketCodec.of(
                 (value, buf) -> buf.writeString(value.action, 64),
                 buf -> new ServerActionPayload(buf.readString(64))
+        );
+
+        @Override
+        public Id<? extends CustomPayload> getId() {
+            return ID;
+        }
+    }
+
+    public record ServerActionResultPayload(String action, boolean success, List<String> lines) implements CustomPayload {
+        public static final Id<ServerActionResultPayload> ID = new Id<>(SERVER_ACTION_RESULT_ID);
+        public static final PacketCodec<RegistryByteBuf, ServerActionResultPayload> CODEC = PacketCodec.of(
+                (value, buf) -> {
+                    buf.writeString(value.action, 64);
+                    buf.writeBoolean(value.success);
+                    buf.writeVarInt(value.lines.size());
+                    for (String line : value.lines) {
+                        buf.writeString(line, 1024);
+                    }
+                },
+                buf -> {
+                    String action = buf.readString(64);
+                    boolean success = buf.readBoolean();
+                    int size = buf.readVarInt();
+                    List<String> lines = new ArrayList<>(size);
+                    for (int i = 0; i < size; i++) {
+                        lines.add(buf.readString(1024));
+                    }
+                    return new ServerActionResultPayload(action, success, lines);
+                }
         );
 
         @Override
