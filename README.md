@@ -75,6 +75,7 @@
 - `clientUploadToServerEnabled`：是否允许客户端上传到服务端（默认 `true`）
 - `clientUploadFolder`：服务端保存客户端上传备份的根目录（默认 `./configcloudbackuper-backups/client-uploads`）
 - `clientUploadMaxBackupsPerPlayer`：每位玩家最多保留数量（`-1` 不限制，默认 `10`）
+- 联机时服务端会同步上传能力；当 `clientUploadToServerEnabled=false` 时，客户端 `remote server upload` 与配置界面“上传最新”会被禁用，并给出提示，避免无效分片上传报错
 
 服务端保存结构示例：
 

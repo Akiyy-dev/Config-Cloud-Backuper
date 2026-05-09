@@ -78,6 +78,7 @@ Main fields include: `includeGameConfigs`, `includeModConfigs`, `includeShaderPa
 - `clientUploadToServerEnabled`: allow client uploads to server (default `true`)
 - `clientUploadFolder`: server storage root for uploaded backups (default `./configcloudbackuper-backups/client-uploads`)
 - `clientUploadMaxBackupsPerPlayer`: max backups per player (`-1` means unlimited, default `10`)
+- On join, server capability is synced to the client; when `clientUploadToServerEnabled=false`, both `remote server upload` and the GUI "Upload Latest" action are disabled with a clear hint, preventing invalid chunk-send errors
 
 Server storage structure:
 
