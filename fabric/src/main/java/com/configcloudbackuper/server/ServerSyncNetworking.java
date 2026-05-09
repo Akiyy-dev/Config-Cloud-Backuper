@@ -48,13 +48,20 @@ public final class ServerSyncNetworking {
                 context.server().execute(() -> handleServerAction(context.player(), payload)));
     }
 
-    public static void sendCapability(ServerPlayerEntity player) {
-        ServerPlayNetworking.send(player, new ServerCapabilityPayload(true, "1"));
+    /**
+     * 告知客户端服务端协议与支持能力。protocolVersion 约定：
+     * - "1"：旧版，客户端视为允许上传（由 begin 再校验）
+     * - "2u1" / "2u0"：协议 2；末尾 1=允许客户端上传到服务端，0=已关闭（避免客户端发分片却无会话）
+     */
+    public static void sendCapability(ServerPlayerEntity player, boolean clientUploadToServerEnabled) {
+        String ver = clientUploadToServerEnabled ? "2u1" : "2u0";
+        ServerPlayNetworking.send(player, new ServerCapabilityPayload(true, ver));
     }
 
     private static void handleUploadBegin(ServerPlayerEntity player, UploadBeginPayload payload) {
         ModConfig cfg = FabricModInitializer.getInstance().getModConfigurationManager().read();
         if (!cfg.isClientUploadToServerEnabled()) {
+            audit(player, "upload_rejected", "client_upload_disabled");
             player.sendMessage(Text.literal("[ConfigCloudBackuper] 服务端未启用客户端上传功能"), false);
             return;
         }
@@ -92,7 +99,9 @@ public final class ServerSyncNetworking {
         try {
             ClientUploadStorageManager.append(player.getUuid(), data);
         } catch (IOException e) {
-            FabricModInitializer.getLogger().error("Failed to append upload chunk", e);
+            FabricModInitializer.getLogger().error(
+                    "Failed to append upload chunk (hint: begin may have been rejected, upload disabled on server, or session already closed)",
+                    e);
             player.sendMessage(Text.literal("[ConfigCloudBackuper] 上传分片失败: " + e.getMessage()), false);
             ClientUploadStorageManager.closeSession(player.getUuid());
             audit(player, "upload_chunk_failed", e.getMessage());
@@ -283,9 +292,9 @@ public final class ServerSyncNetworking {
         public static final PacketCodec<RegistryByteBuf, ServerCapabilityPayload> CODEC = PacketCodec.of(
                 (value, buf) -> {
                     buf.writeBoolean(value.supported);
-                    buf.writeString(value.protocolVersion, 16);
+                    buf.writeString(value.protocolVersion, 24);
                 },
-                buf -> new ServerCapabilityPayload(buf.readBoolean(), buf.readString(16))
+                buf -> new ServerCapabilityPayload(buf.readBoolean(), buf.readString(24))
         );
 
         @Override
