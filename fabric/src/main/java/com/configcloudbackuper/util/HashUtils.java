@@ -27,6 +27,19 @@ public final class HashUtils {
         }
     }
 
+    /**
+     * SHA-256 hex for an in-memory byte array (e.g. upload payload already read into RAM).
+     */
+    public static String sha256HexBytes(byte[] data) throws IOException {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(data);
+            return toHex(digest.digest());
+        } catch (NoSuchAlgorithmException e) {
+            throw new IOException("SHA-256 algorithm unavailable", e);
+        }
+    }
+
     public static MessageDigest newSha256Digest() throws IOException {
         try {
             return MessageDigest.getInstance("SHA-256");

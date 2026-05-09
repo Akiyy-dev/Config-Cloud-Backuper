@@ -231,33 +231,47 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
         CompletableFuture.runAsync(() -> {
             try {
                 byte[] all = Files.readAllBytes(file);
-                ClientPlayNetworking.send(new ServerSyncNetworking.UploadBeginPayload(
-                        file.getFileName().toString(),
-                        all.length,
-                        HashUtils.sha256Hex(file)
-                ));
-                final int chunkSize = 32 * 1024;
-                for (int pos = 0; pos < all.length; pos += chunkSize) {
-                    int len = Math.min(chunkSize, all.length - pos);
-                    byte[] chunk = new byte[len];
-                    System.arraycopy(all, pos, chunk, 0, len);
-                    ClientPlayNetworking.send(new ServerSyncNetworking.UploadChunkPayload(chunk));
-                }
-                ClientPlayNetworking.send(new ServerSyncNetworking.UploadEndPayload());
-                setLocalResult(
-                        isChinese ? "服务端联动结果" : "Remote Server Result",
-                        true,
-                        List.of(isChinese ? "上传分片已发送，等待服务端确认。" : "Upload sent, waiting for server confirmation.")
-                );
+                client.execute(() -> {
+                    try {
+                        ClientPlayNetworking.send(new ServerSyncNetworking.UploadBeginPayload(
+                                file.getFileName().toString(),
+                                all.length,
+                                HashUtils.sha256HexBytes(all)
+                        ));
+                        final int chunkSize = 32 * 1024;
+                        for (int pos = 0; pos < all.length; pos += chunkSize) {
+                            int len = Math.min(chunkSize, all.length - pos);
+                            byte[] chunk = new byte[len];
+                            System.arraycopy(all, pos, chunk, 0, len);
+                            ClientPlayNetworking.send(new ServerSyncNetworking.UploadChunkPayload(chunk));
+                        }
+                        ClientPlayNetworking.send(new ServerSyncNetworking.UploadEndPayload());
+                        setLocalResult(
+                                isChinese ? "服务端联动结果" : "Remote Server Result",
+                                true,
+                                List.of(isChinese ? "上传分片已发送，等待服务端确认。" : "Upload sent, waiting for server confirmation.")
+                        );
+                    } catch (Exception e) {
+                        FabricModInitializer.getLogger().error("Upload latest backup to server failed", e);
+                        setLocalResult(
+                                isChinese ? "服务端联动结果" : "Remote Server Result",
+                                false,
+                                List.of((isChinese ? "上传失败: " : "Upload failed: ") + e.getMessage())
+                        );
+                    } finally {
+                        isUploading = false;
+                    }
+                });
             } catch (Exception e) {
-                FabricModInitializer.getLogger().error("Upload latest backup to server failed", e);
-                setLocalResult(
-                        isChinese ? "服务端联动结果" : "Remote Server Result",
-                        false,
-                        List.of((isChinese ? "上传失败: " : "Upload failed: ") + e.getMessage())
-                );
-            } finally {
-                isUploading = false;
+                FabricModInitializer.getLogger().error("Upload latest backup to server failed (read file)", e);
+                client.execute(() -> {
+                    setLocalResult(
+                            isChinese ? "服务端联动结果" : "Remote Server Result",
+                            false,
+                            List.of((isChinese ? "上传失败: " : "Upload failed: ") + e.getMessage())
+                    );
+                    isUploading = false;
+                });
             }
         });
     }

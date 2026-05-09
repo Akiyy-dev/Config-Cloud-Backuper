@@ -398,17 +398,28 @@ public final class ConfigBackuperCommands {
             return 0;
         }
         source.sendFeedback(Text.literal("正在上传到服务端: " + file.getFileName()));
-        CompletableFuture.runAsync(() -> uploadFileToServer(source, file));
+        MinecraftClient client = source.getClient();
+        CompletableFuture.runAsync(() -> {
+            try {
+                byte[] all = Files.readAllBytes(file);
+                client.execute(() -> sendServerUploadPackets(source, file.getFileName().toString(), all));
+            } catch (Exception e) {
+                FabricModInitializer.getLogger().error("Upload to server failed (read file)", e);
+                client.execute(() -> source.sendError(Text.literal("上传到服务端失败: " + e.getMessage())));
+            }
+        });
         return Command.SINGLE_SUCCESS;
     }
 
-    private static void uploadFileToServer(FabricClientCommandSource source, Path file) {
+    /**
+     * Must run on the client thread: Fabric networking requires ordered sends from the main executor.
+     */
+    private static void sendServerUploadPackets(FabricClientCommandSource source, String fileName, byte[] all) {
         try {
-            byte[] all = Files.readAllBytes(file);
             ClientPlayNetworking.send(new ServerSyncNetworking.UploadBeginPayload(
-                    file.getFileName().toString(),
+                    fileName,
                     all.length,
-                    HashUtils.sha256Hex(file)
+                    HashUtils.sha256HexBytes(all)
             ));
 
             final int chunkSize = 32 * 1024;
@@ -420,10 +431,10 @@ public final class ConfigBackuperCommands {
             }
 
             ClientPlayNetworking.send(new ServerSyncNetworking.UploadEndPayload());
-            source.getClient().execute(() -> source.sendFeedback(Text.literal("上传分片已发送，等待服务端确认。")));
+            source.sendFeedback(Text.literal("上传分片已发送，等待服务端确认。"));
         } catch (Exception e) {
             FabricModInitializer.getLogger().error("Upload to server failed", e);
-            source.getClient().execute(() -> source.sendError(Text.literal("上传到服务端失败: " + e.getMessage())));
+            source.sendError(Text.literal("上传到服务端失败: " + e.getMessage()));
         }
     }
 
