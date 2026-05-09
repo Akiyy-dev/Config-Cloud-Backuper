@@ -92,6 +92,7 @@ jobs:
       # - Secrets: MODRINTH_TOKEN, CURSEFORGE_TOKEN
       # - Variables: MODRINTH_PROJECT_ID, CURSEFORGE_PROJECT_ID
       - name: Publish to Modrinth and CurseForge
+        id: publish
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
@@ -106,6 +107,32 @@ jobs:
 
           loaders: fabric
           game-versions: 1.21.1
+          modrinth-game-versions: |
+            1.21.1
+          curseforge-game-versions: |
+            1.21.1
+          java: |
+            21
 
           version-type: ${{ github.event.release.prerelease && 'beta' || 'release' }}
           retry-attempts: 3
+
+      # mc-publish 尚不支持单独设置 CurseForge「客户端/服务端」环境。
+      # Modrinth 后台「Environment」里「客户端和服务端，两端均安装最佳」对应 v2 API：client_side + server_side 均为 optional
+      #（与 fabric.mod.json 的 environment: "*" 一致：单端可运行，双端安装体验最佳）。
+      # 若必须「仅客户端」或「仅服务端」，请改为 unsupported/optional 等组合；若强制双端安装则两侧改为 required。
+      - name: Set Modrinth project client/server metadata (API)
+        if: ${{ vars.MODRINTH_PROJECT_ID != '' }}
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
+        run: |
+          if [ -z "${MODRINTH_TOKEN}" ]; then
+            echo "MODRINTH_TOKEN not set; skip Modrinth project metadata patch."
+            exit 0
+          fi
+          curl -fsS -X PATCH "https://api.modrinth.com/v2/project/${MODRINTH_PROJECT_ID}" \
+            -H "Authorization: ${MODRINTH_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: Akiyy-dev/Config-Cloud-Backuper/${{ github.event.release.tag_name }} (GitHub Actions)" \
+            -d '{"client_side":"optional","server_side":"optional"}'
