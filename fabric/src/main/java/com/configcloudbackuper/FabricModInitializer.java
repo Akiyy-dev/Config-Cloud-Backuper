@@ -63,8 +63,10 @@ public class FabricModInitializer implements ModInitializer {
         // 服务端命令注册（客户端命令由 ConfigBackuperClient 注册）
         CommandRegistrationCallback.EVENT.register(ConfigBackuperServerCommands::register);
         ServerSyncNetworking.register();
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-                ServerSyncNetworking.sendCapability(handler.getPlayer()));
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+            ModConfig cfg = getInstance().getModConfigurationManager().read();
+            ServerSyncNetworking.sendCapability(handler.getPlayer(), cfg.isClientUploadToServerEnabled());
+        });
     }
 
     // 公共方法

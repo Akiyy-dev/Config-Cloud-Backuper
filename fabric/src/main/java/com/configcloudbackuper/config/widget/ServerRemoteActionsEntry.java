@@ -34,6 +34,8 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
     private static volatile boolean lastSuccess = true;
     private static volatile boolean serverSupported = false;
     private static volatile String serverProtocol = "";
+    /** 服务端是否在能力包中允许客户端上传（2u0/2u1）；旧协议 "1" 视为允许，由 begin 再校验 */
+    private static volatile boolean serverAllowsClientUpload = true;
 
     private int statusX;
     private int listX;
@@ -88,21 +90,28 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
         this.uploadX = startX + (BUTTON_WIDTH + GAP) * 2;
         this.buttonY = y + (entryHeight - BUTTON_HEIGHT) / 2;
 
-        boolean ready = isServerReady();
+        boolean remoteReady = isRemoteActionsReady();
+        boolean uploadReady = isUploadToServerReady();
         int disabledColor = 0xFF5C5C5C;
-        drawButton(context, statusX, buttonY, ready ? 0xFF3F51B5 : disabledColor, isChinese ? "状态" : "Status");
-        drawButton(context, listX, buttonY, ready ? 0xFF009688 : disabledColor, isChinese ? "列表" : "List");
-        drawButton(context, uploadX, buttonY, ready ? (isUploading ? 0xFF666666 : 0xFF8E24AA) : disabledColor, isUploading ? (isChinese ? "上传中..." : "Uploading...") : (isChinese ? "上传最新" : "Upload Latest"));
+        drawButton(context, statusX, buttonY, remoteReady ? 0xFF3F51B5 : disabledColor, isChinese ? "状态" : "Status");
+        drawButton(context, listX, buttonY, remoteReady ? 0xFF009688 : disabledColor, isChinese ? "列表" : "List");
+        drawButton(context, uploadX, buttonY, uploadReady ? (isUploading ? 0xFF666666 : 0xFF8E24AA) : disabledColor, isUploading ? (isChinese ? "上传中..." : "Uploading...") : (isChinese ? "上传最新" : "Upload Latest"));
 
-        String supportHint = ready
-                ? (isChinese ? "当前服务端已支持联动" : "Server integration supported")
-                : (isChinese ? "请在支持本模组服务端的环境下使用" : "Use this on a server with this mod installed");
+        String supportHint;
+        if (!remoteReady) {
+            supportHint = isChinese ? "请在支持本模组服务端的环境下使用" : "Use this on a server with this mod installed";
+        } else if (!serverAllowsClientUpload) {
+            supportHint = isChinese ? "服务端已关闭「客户端上传到服务器」（状态/列表仍可用）" : "Server disabled client upload (status/list still work)";
+        } else {
+            supportHint = isChinese ? "当前服务端已支持联动" : "Server integration supported";
+        }
+        int hintColor = !remoteReady ? 0xFFFFB74D : (!serverAllowsClientUpload ? 0xFFFFB74D : 0xFF66BB6A);
         context.drawTextWithShadow(
                 MinecraftClient.getInstance().textRenderer,
                 Text.literal(supportHint + (serverProtocol.isEmpty() ? "" : " (protocol " + serverProtocol + ")")),
                 x + 8,
                 buttonY - 12,
-                ready ? 0xFF66BB6A : 0xFFFFB74D
+                hintColor
         );
 
         if (!resultTitle.isEmpty()) {
@@ -143,7 +152,7 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (inButton(mouseX, mouseY, statusX)) {
-            if (!isServerReady()) {
+            if (!isRemoteActionsReady()) {
                 showUnsupportedHint();
                 return true;
             }
@@ -151,7 +160,7 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
             return true;
         }
         if (inButton(mouseX, mouseY, listX)) {
-            if (!isServerReady()) {
+            if (!isRemoteActionsReady()) {
                 showUnsupportedHint();
                 return true;
             }
@@ -159,8 +168,16 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
             return true;
         }
         if (inButton(mouseX, mouseY, uploadX)) {
-            if (!isServerReady()) {
-                showUnsupportedHint();
+            if (!isUploadToServerReady()) {
+                if (!isRemoteActionsReady()) {
+                    showUnsupportedHint();
+                } else {
+                    setLocalResult(
+                            isChinese ? "服务端联动结果" : "Remote Server Result",
+                            false,
+                            List.of(isChinese ? "服务端未开启客户端上传，请让管理员打开 clientUploadToServerEnabled。" : "Server has client upload disabled (clientUploadToServerEnabled).")
+                    );
+                }
                 return true;
             }
             if (isUploading) {
@@ -177,7 +194,7 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
     }
 
     private void requestServerAction(String action) {
-        if (!isServerReady()) {
+        if (!isRemoteActionsReady()) {
             setLocalResult(
                     isChinese ? "服务端联动结果" : "Remote Server Result",
                     false,
@@ -203,7 +220,7 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
 
     private void uploadLatestBackup() {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (!isServerReady()) {
+        if (!isUploadToServerReady()) {
             setLocalResult(
                     isChinese ? "服务端联动结果" : "Remote Server Result",
                     false,
@@ -291,12 +308,34 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
     public static void updateServerCapability(boolean supported, String protocolVersion) {
         serverSupported = supported;
         serverProtocol = protocolVersion == null ? "" : protocolVersion;
+        serverAllowsClientUpload = parseServerAllowsClientUpload(protocolVersion);
     }
 
-    private boolean isServerReady() {
+    /**
+     * 供客户端命令等在无 GUI 场景下判断：当前连接的服务端是否允许客户端上传备份。
+     */
+    public static boolean isClientUploadAllowedByServer() {
+        return serverAllowsClientUpload;
+    }
+
+    private static boolean parseServerAllowsClientUpload(String protocolVersion) {
+        if (protocolVersion == null) {
+            return true;
+        }
+        if (protocolVersion.length() >= 4 && protocolVersion.startsWith("2u")) {
+            return protocolVersion.charAt(3) == '1';
+        }
+        return true;
+    }
+
+    private boolean isRemoteActionsReady() {
         return serverSupported
                 && ClientPlayNetworking.canSend(ServerSyncNetworking.ServerActionPayload.ID)
                 && ClientPlayNetworking.canSend(ServerSyncNetworking.UploadBeginPayload.ID);
+    }
+
+    private boolean isUploadToServerReady() {
+        return isRemoteActionsReady() && serverAllowsClientUpload;
     }
 
     private void showUnsupportedHint() {

@@ -5,6 +5,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.configcloudbackuper.FabricModInitializer;
+import com.configcloudbackuper.config.widget.ServerRemoteActionsEntry;
 import com.configcloudbackuper.config.BackupFileManager;
 import com.configcloudbackuper.config.model.BackupFileInfo;
 import com.configcloudbackuper.core.BackupCoordinator;
@@ -384,6 +385,10 @@ public final class ConfigBackuperCommands {
         FabricClientCommandSource source = ctx.getSource();
         if (!ClientPlayNetworking.canSend(ServerSyncNetworking.UploadBeginPayload.ID)) {
             source.sendError(Text.literal("当前未连接支持该功能的服务端。"));
+            return 0;
+        }
+        if (!ServerRemoteActionsEntry.isClientUploadAllowedByServer()) {
+            source.sendError(Text.literal("服务端未开启客户端上传（clientUploadToServerEnabled）。"));
             return 0;
         }
         ModConfig cfg = FabricModInitializer.getInstance().getModConfigurationManager().read();
