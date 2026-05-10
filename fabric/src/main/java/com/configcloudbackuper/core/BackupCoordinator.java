@@ -15,24 +15,37 @@ import java.util.List;
  */
 public final class BackupCoordinator {
 
+    /** 使用哪一侧主配置（客户端文件 vs 服务端文件）驱动备份路径与策略 */
+    public enum ConfigProfile {
+        CLIENT,
+        SERVER
+    }
+
     private BackupCoordinator() {
     }
 
-    public static void runLocalBackupWithCleanup(FabricModInitializer mod) {
-        mod.getConfigBackuper().performBackup();
-        mod.getBackupLimiter().removeOldBackups();
+    public static void runLocalBackupWithCleanup(FabricModInitializer mod, ConfigProfile profile) {
+        if (profile == ConfigProfile.SERVER) {
+            mod.getServerConfigBackuper().performBackup();
+            mod.getServerBackupLimiter().removeOldBackups();
+        } else {
+            mod.getClientConfigBackuper().performBackup();
+            mod.getClientBackupLimiter().removeOldBackups();
+        }
     }
 
     /**
      * 在本地备份与清理完成后，若 WebDAV 已启用则上传当前目录下最新的匹配备份文件。
      */
-    public static void runLocalBackupCleanupAndWebDavIfEnabled(FabricModInitializer mod) {
-        runLocalBackupWithCleanup(mod);
+    public static void runLocalBackupCleanupAndWebDavIfEnabled(FabricModInitializer mod, ConfigProfile profile) {
+        runLocalBackupWithCleanup(mod, profile);
         WebDavConfig webDav = mod.loadWebDavConfig();
         if (!webDav.isEnabled()) {
             return;
         }
-        ModConfig cfg = mod.getModConfigurationManager().read();
+        ModConfig cfg = profile == ConfigProfile.SERVER
+                ? mod.getServerModConfigurationManager().read()
+                : mod.getClientModConfigurationManager().read();
         Path latest = findLatestBackupPath(cfg);
         if (latest == null) {
             FabricModInitializer.getLogger().warn("WebDAV 已启用但未找到可上传的备份文件");

@@ -118,7 +118,7 @@ public final class ConfigBackuperCommands {
                 "Config Cloud Backuper 命令:",
                 "  backup — 执行本地备份、清理旧文件；若已启用 WebDAV 则上传最新备份",
                 "  list — 列出本地备份目录中的备份文件",
-                "  config … — 查看/修改 config-cloud-backuper.json",
+                "  config … — 查看/修改 config-cloud-backuper-client.json",
                 "  remote cloud … — WebDAV 操作（推荐）",
                 "  remote server … — 上传本地备份到服务端（推荐）"
         ));
@@ -131,7 +131,7 @@ public final class ConfigBackuperCommands {
         CompletableFuture.runAsync(() -> {
             try {
                 FabricModInitializer mod = FabricModInitializer.getInstance();
-                BackupCoordinator.runLocalBackupCleanupAndWebDavIfEnabled(mod);
+                BackupCoordinator.runLocalBackupCleanupAndWebDavIfEnabled(mod, BackupCoordinator.ConfigProfile.CLIENT);
                 client.execute(() -> source.sendFeedback(Text.literal("备份流程已执行（详见日志；若失败请查看 latest.log）。")));
             } catch (Exception e) {
                 FabricModInitializer.getLogger().error("命令备份失败", e);
@@ -143,7 +143,7 @@ public final class ConfigBackuperCommands {
 
     private static int listLocal(CommandContext<FabricClientCommandSource> ctx) {
         FabricModInitializer mod = FabricModInitializer.getInstance();
-        ModConfig cfg = mod.getModConfigurationManager().read();
+        ModConfig cfg = mod.getClientModConfigurationManager().read();
         Path dir = BackupPaths.resolveBackupDirectory(cfg);
         String prefix = cfg.getBackupFilePrefix() != null ? cfg.getBackupFilePrefix() : "backup";
         String suffix = cfg.getBackupFileSuffix() != null ? cfg.getBackupFileSuffix() : ".zip";
@@ -165,14 +165,15 @@ public final class ConfigBackuperCommands {
     }
 
     private static int configReload(CommandContext<FabricClientCommandSource> ctx) {
-        FabricModInitializer.getInstance().reloadConfig();
-        ctx.getSource().sendFeedback(Text.literal("已从磁盘重新加载主配置并刷新备份器。"));
+        FabricModInitializer.getInstance().reloadClientConfig();
+        ctx.getSource().sendFeedback(Text.literal("已从磁盘重新加载客户端主配置（config-cloud-backuper-client.json）并刷新备份器。"));
         return Command.SINGLE_SUCCESS;
     }
 
     private static int configShow(CommandContext<FabricClientCommandSource> ctx) {
-        ModConfig c = FabricModInitializer.getInstance().getModConfigurationManager().read();
+        ModConfig c = FabricModInitializer.getInstance().getClientModConfigurationManager().read();
         return sendLines(ctx, List.of(
+                "（文件: config-cloud-backuper-client.json）",
                 "includeGameConfigs = " + c.isIncludeGameConfigs(),
                 "includeModConfigs = " + c.isIncludeModConfigs(),
                 "includeShaderPackConfigs = " + c.isIncludeShaderPackConfigs(),
@@ -185,9 +186,7 @@ public final class ConfigBackuperCommands {
                 "backupFolder = " + c.getBackupFolder(),
                 "backupFilePrefix = " + c.getBackupFilePrefix(),
                 "backupFileSuffix = " + c.getBackupFileSuffix(),
-                "clientUploadToServerEnabled = " + c.isClientUploadToServerEnabled(),
-                "clientUploadFolder = " + c.getClientUploadFolder(),
-                "clientUploadMaxBackupsPerPlayer = " + c.getClientUploadMaxBackupsPerPlayer()
+                "（客户端上传到服务端请在服务端编辑 config-cloud-backuper-server.json 或使用服务端命令）"
         ));
     }
 
@@ -197,9 +196,7 @@ public final class ConfigBackuperCommands {
                 "maxBackups: 整数，-1 表示不限制数量",
                 "backupFolder: 路径字符串（相对路径相对于游戏运行目录）",
                 "backupFilePrefix / backupFileSuffix: 字符串",
-                "clientUploadToServerEnabled: 是否允许客户端上传到服务端",
-                "clientUploadFolder: 服务端保存客户端上传文件的根目录",
-                "clientUploadMaxBackupsPerPlayer: 每位玩家最大保留数（-1 不限制）"
+                "（上传接收目录等请在服务端配置，勿在此客户端文件修改）"
         ));
     }
 
@@ -207,7 +204,7 @@ public final class ConfigBackuperCommands {
         String key = StringArgumentType.getString(ctx, "key").trim();
         String value = StringArgumentType.getString(ctx, "value");
         FabricModInitializer mod = FabricModInitializer.getInstance();
-        ModConfigurationManager mgr = mod.getModConfigurationManager();
+        ModConfigurationManager mgr = mod.getClientModConfigurationManager();
         ModConfig c = mgr.read();
         try {
             applyConfigKey(c, key, value);
@@ -219,7 +216,7 @@ public final class ConfigBackuperCommands {
             return 0;
         }
         mgr.save(c);
-        mod.reloadConfig();
+        mod.reloadClientConfig();
         ctx.getSource().sendFeedback(Text.literal("已保存并重新加载: " + key));
         return Command.SINGLE_SUCCESS;
     }
@@ -238,9 +235,8 @@ public final class ConfigBackuperCommands {
             case "backupFolder" -> c.setBackupFolder(Path.of(value.trim()));
             case "backupFilePrefix" -> c.setBackupFilePrefix(value);
             case "backupFileSuffix" -> c.setBackupFileSuffix(value);
-            case "clientUploadToServerEnabled" -> c.setClientUploadToServerEnabled(parseBool(value));
-            case "clientUploadFolder" -> c.setClientUploadFolder(Path.of(value.trim()));
-            case "clientUploadMaxBackupsPerPlayer" -> c.setClientUploadMaxBackupsPerPlayer(Integer.parseInt(value.trim()));
+            case "clientUploadToServerEnabled", "clientUploadFolder", "clientUploadMaxBackupsPerPlayer", "clientUploadMaxFileSizeMb" ->
+                    throw new IllegalArgumentException("客户端配置不支持修改上传接收相关键；请在服务端编辑 config-cloud-backuper-server.json 或使用 /server_config_backuper remote server set");
             default -> throw new IllegalArgumentException("未知配置键: " + key + "（使用 /config_backuper config show 查看键名）");
         }
     }
@@ -289,7 +285,7 @@ public final class ConfigBackuperCommands {
             try {
                 FabricModInitializer mod = FabricModInitializer.getInstance();
                 WebDavConfig w = mod.loadWebDavConfig();
-                ModConfig cfg = mod.getModConfigurationManager().read();
+                ModConfig cfg = mod.getClientModConfigurationManager().read();
                 Path file;
                 if (fileNameOrNull != null && !fileNameOrNull.isBlank()) {
                     file = BackupPaths.resolveBackupDirectory(cfg).resolve(fileNameOrNull.trim());
@@ -321,7 +317,7 @@ public final class ConfigBackuperCommands {
         CompletableFuture.runAsync(() -> {
             try {
                 FabricModInitializer mod = FabricModInitializer.getInstance();
-                ModConfig cfg = mod.getModConfigurationManager().read();
+                ModConfig cfg = mod.getClientModConfigurationManager().read();
                 Path dir = BackupPaths.resolveBackupDirectory(cfg);
                 java.nio.file.Files.createDirectories(dir);
                 WebDavConfig w = mod.loadWebDavConfig();
@@ -391,7 +387,7 @@ public final class ConfigBackuperCommands {
             source.sendError(Text.literal("服务端未开启客户端上传（clientUploadToServerEnabled）。"));
             return 0;
         }
-        ModConfig cfg = FabricModInitializer.getInstance().getModConfigurationManager().read();
+        ModConfig cfg = FabricModInitializer.getInstance().getClientModConfigurationManager().read();
         Path file;
         if (fileNameOrNull != null && !fileNameOrNull.isBlank()) {
             file = BackupPaths.resolveBackupDirectory(cfg).resolve(fileNameOrNull.trim());

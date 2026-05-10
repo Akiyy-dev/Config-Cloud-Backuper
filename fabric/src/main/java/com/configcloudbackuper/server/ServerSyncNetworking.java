@@ -22,7 +22,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public final class ServerSyncNetworking {
-    private static final long MAX_UPLOAD_BYTES = 50L * 1024L * 1024L; // 50 MB
     public static final Identifier CLIENT_UPLOAD_BEGIN_ID = Identifier.of("config-cloud-backuper", "client_upload_begin");
     public static final Identifier CLIENT_UPLOAD_CHUNK_ID = Identifier.of("config-cloud-backuper", "client_upload_chunk");
     public static final Identifier CLIENT_UPLOAD_END_ID = Identifier.of("config-cloud-backuper", "client_upload_end");
@@ -71,7 +70,7 @@ public final class ServerSyncNetworking {
     }
 
     private static void handleUploadBegin(ServerPlayerEntity player, UploadBeginPayload payload) {
-        ModConfig cfg = FabricModInitializer.getInstance().getModConfigurationManager().read();
+        ModConfig cfg = FabricModInitializer.getInstance().getServerModConfigurationManager().read();
         if (!cfg.isClientUploadToServerEnabled()) {
             audit(player, "upload_rejected", "client_upload_disabled");
             player.sendMessage(Text.literal("[ConfigCloudBackuper] 服务端未启用客户端上传功能"), false);
@@ -87,9 +86,11 @@ public final class ServerSyncNetworking {
             sendUploadSessionAck(player, false, "invalid_extension");
             return;
         }
-        if (expectedSize <= 0 || expectedSize > MAX_UPLOAD_BYTES) {
-            audit(player, "upload_rejected", "size=" + expectedSize);
-            player.sendMessage(Text.literal("[ConfigCloudBackuper] 文件大小不合法，或超过限制 " + (MAX_UPLOAD_BYTES / (1024 * 1024)) + "MB"), false);
+        long maxUploadBytes = cfg.getClientUploadMaxFileSizeBytes();
+        if (expectedSize <= 0 || expectedSize > maxUploadBytes) {
+            audit(player, "upload_rejected", "size=" + expectedSize + ", limitBytes=" + maxUploadBytes);
+            long limitMb = maxUploadBytes / (1024L * 1024L);
+            player.sendMessage(Text.literal("[ConfigCloudBackuper] 文件大小不合法，或超过服务端限制 " + limitMb + " MiB（config-cloud-backuper-server.json → clientUploadMaxFileSizeMb）"), false);
             sendUploadSessionAck(player, false, "invalid_size");
             return;
         }
@@ -140,7 +141,7 @@ public final class ServerSyncNetworking {
     }
 
     private static void handleUploadEnd(ServerPlayerEntity player) {
-        ModConfig cfg = FabricModInitializer.getInstance().getModConfigurationManager().read();
+        ModConfig cfg = FabricModInitializer.getInstance().getServerModConfigurationManager().read();
         try {
             Path saved = ClientUploadStorageManager.finish(player.getUuid(), cfg);
             player.sendMessage(Text.literal("[ConfigCloudBackuper] 上传成功: " + saved.getFileName()), false);
@@ -155,17 +156,19 @@ public final class ServerSyncNetworking {
 
     private static void handleServerAction(ServerPlayerEntity player, ServerActionPayload payload) {
         String action = payload.action();
-        ModConfig cfg = FabricModInitializer.getInstance().getModConfigurationManager().read();
+        ModConfig cfg = FabricModInitializer.getInstance().getServerModConfigurationManager().read();
         if ("status".equals(action)) {
             List<String> lines = List.of(
                     "enabled=" + cfg.isClientUploadToServerEnabled(),
                     "folder=" + cfg.getClientUploadFolder(),
-                    "maxPerPlayer=" + cfg.getClientUploadMaxBackupsPerPlayer()
+                    "maxPerPlayer=" + cfg.getClientUploadMaxBackupsPerPlayer(),
+                    "maxFileSizeMb=" + cfg.getClientUploadMaxFileSizeMb()
             );
             ServerPlayNetworking.send(player, new ServerActionResultPayload(action, true, lines));
             player.sendMessage(Text.literal("[ConfigCloudBackuper][server] enabled=" + cfg.isClientUploadToServerEnabled()), false);
             player.sendMessage(Text.literal("[ConfigCloudBackuper][server] folder=" + cfg.getClientUploadFolder()), false);
             player.sendMessage(Text.literal("[ConfigCloudBackuper][server] maxPerPlayer=" + cfg.getClientUploadMaxBackupsPerPlayer()), false);
+            player.sendMessage(Text.literal("[ConfigCloudBackuper][server] maxFileSizeMb=" + cfg.getClientUploadMaxFileSizeMb()), false);
             return;
         }
         if ("list".equals(action)) {
