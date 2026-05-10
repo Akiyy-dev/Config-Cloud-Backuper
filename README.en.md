@@ -64,8 +64,13 @@ Running root command without subcommand prints brief help.
 
 ## Configuration
 
-Main config: `config/config-cloud-backuper.json` (on first boot, if missing, a default file is written so you can edit it on the server disk)  
-WebDAV config: `config/config-cloud-backuper_webdav.json`
+Main config is split into two files (same JSON schema / `ModConfig` fields):
+- **Client**: `config/config-cloud-backuper-client.json` — used by the game client (including singleplayer) for ModMenu + `/config_backuper` local backup/WebDAV paths.
+- **Server**: `config/config-cloud-backuper-server.json` — used by dedicated or integrated **server** logic for server-side commands and **client-to-server upload** settings.
+
+Defaults are written on first boot when a file is missing. If the legacy single file `config/config-cloud-backuper.json` still exists, it is **copied** into both new files once (the legacy file is not deleted).
+
+WebDAV config (shared): `config/config-cloud-backuper_webdav.json`
 
 You can also edit values with `config` / `remote cloud` / `remote server` commands above.
 
@@ -73,11 +78,14 @@ You can also edit values with `config` / `remote cloud` / `remote server` comman
 
 Main fields include: `includeGameConfigs`, `includeModConfigs`, `includeShaderPackConfigs`, `includeSchematics`, `include3dSkin`, `includeSyncmatics`, `includeDefaultConfigs`, `compressionEnabled`, `maxBackups`, `backupFolder`, `backupFilePrefix`, `backupFileSuffix`.
 
-### Client Upload to Server (main config fields)
+### Client Upload to Server (server config file only)
+
+These keys apply only in **`config-cloud-backuper-server.json`** (do not rely on the client file; client-side `config set` rejects them):
 
 - `clientUploadToServerEnabled`: allow client uploads to server (default `true`)
 - `clientUploadFolder`: server storage root for uploaded backups (default `./configcloudbackuper-backups/client-uploads`)
 - `clientUploadMaxBackupsPerPlayer`: max backups per player (`-1` means unlimited, default `10`)
+- `clientUploadMaxFileSizeMb`: max size in MiB for a single uploaded `.zip` (default `50`; server clamps effective range to 1–4096)
 - On join, server capability is synced to the client; when `clientUploadToServerEnabled=false`, both `remote server upload` and the GUI "Upload Latest" action are disabled with a clear hint, preventing invalid chunk-send errors
 - Protocol `3u*`: after processing upload begin, the server sends an ACK and the client only sends chunks after a successful ACK—this avoids spamming chunks when begin is rejected; **keep client and server mod versions in sync**
 

@@ -60,7 +60,7 @@ public class ModConfigScreen {
                 .getLanguage().startsWith("zh");
 
         FabricModInitializer mod = FabricModInitializer.getInstance();
-        ModConfigurationManager configManager = mod.getModConfigurationManager();
+        ModConfigurationManager configManager = mod.getClientModConfigurationManager();
         ModConfig config = configManager.read();
         WebDavConfig webDavConfig = mod.loadWebDavConfig();
 
@@ -270,7 +270,7 @@ public class ModConfigScreen {
 
             // Reload backuper and limiter with new config (no automatic backup)
             try {
-                mod.reloadConfig();
+                mod.reloadClientConfig();
                 FabricModInitializer.getLogger().info("Configuration saved and reloaded");
             } catch (Exception e) {
                 FabricModInitializer.getLogger().error("Failed to reload config after save", e);

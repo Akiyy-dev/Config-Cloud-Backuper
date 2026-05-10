@@ -229,7 +229,7 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
             );
             return;
         }
-        ModConfig config = FabricModInitializer.getInstance().getModConfigurationManager().read();
+        ModConfig config = FabricModInitializer.getInstance().getClientModConfigurationManager().read();
         Path file = BackupCoordinator.findLatestBackupPath(config);
         if (file == null || !Files.isRegularFile(file)) {
             setLocalResult(

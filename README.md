@@ -64,17 +64,26 @@
 
 ## 配置说明
 
-主配置：`config/config-cloud-backuper.json`（首次启动若不存在会自动写入默认内容到该路径，便于在服务端目录直接编辑）。WebDAV：`config/config-cloud-backuper_webdav.json`。亦可使用上文 `config` / `remote cloud` / `remote server` 子命令修改。
+主配置拆为两份（JSON 结构相同，均为 `ModConfig` 字段）：
+- **客户端**：`config/config-cloud-backuper-client.json` — 游戏客户端 / 单人存档侧读取；ModMenu 界面与 `/config_backuper` 的本地备份、WebDAV 等使用该文件。
+- **服务端**：`config/config-cloud-backuper-server.json` — 专用服务端或集成服务端逻辑读取；`/config_backuper` 与 `/server_config_backuper` 在**服务端**执行时、以及「客户端上传到服务端」相关选项使用该文件。
+
+首次启动若对应文件不存在会自动写入默认内容。若仍存在旧版单文件 `config/config-cloud-backuper.json`，启动时会**自动复制**到上述两个文件（不删除旧文件）。
+
+WebDAV：`config/config-cloud-backuper_webdav.json`（仍共用一份）。亦可使用上文 `config` / `remote cloud` / `remote server` 子命令修改。
 
 ### 通用与备份存储
 
 与 JSON 字段一致，主要包括：`includeGameConfigs`、`includeModConfigs`、`includeShaderPackConfigs`、`includeSchematics`、`include3dSkin`、`includeSyncmatics`、`includeDefaultConfigs`、`compressionEnabled`、`maxBackups`、`backupFolder`、`backupFilePrefix`、`backupFileSuffix`。
 
-### 客户端上传到服务端（主配置字段）
+### 客户端上传到服务端（仅服务端配置文件生效）
+
+以下键仅在 **`config-cloud-backuper-server.json`** 中生效（不要在客户端文件里改；客户端命令 `config set` 也会拒绝这些键）：
 
 - `clientUploadToServerEnabled`：是否允许客户端上传到服务端（默认 `true`）
 - `clientUploadFolder`：服务端保存客户端上传备份的根目录（默认 `./configcloudbackuper-backups/client-uploads`）
 - `clientUploadMaxBackupsPerPlayer`：每位玩家最多保留数量（`-1` 不限制，默认 `10`）
+- `clientUploadMaxFileSizeMb`：单个上传 `.zip` 最大体积（MiB，默认 `50`；有效范围会在服务端夹紧为 1～4096）
 - 联机时服务端会同步上传能力；当 `clientUploadToServerEnabled=false` 时，客户端 `remote server upload` 与配置界面“上传最新”会被禁用，并给出提示，避免无效分片上传报错
 - 协议 `3u*`：服务端在处理「上传开始」后会回复 ACK，客户端仅在收到成功 ACK 后才发送分片，避免 begin 校验失败时仍发送分片；**请保持客户端与服务端模组版本一致**
 

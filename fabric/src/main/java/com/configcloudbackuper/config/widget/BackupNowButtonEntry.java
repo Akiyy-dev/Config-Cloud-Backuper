@@ -113,7 +113,9 @@ public class BackupNowButtonEntry extends AbstractConfigListEntry<Void> {
         // 在后台线程执行备份
         CompletableFuture.runAsync(() -> {
             try {
-                BackupCoordinator.runLocalBackupCleanupAndWebDavIfEnabled(FabricModInitializer.getInstance());
+                BackupCoordinator.runLocalBackupCleanupAndWebDavIfEnabled(
+                        FabricModInitializer.getInstance(),
+                        BackupCoordinator.ConfigProfile.CLIENT);
                 FabricModInitializer.getLogger().info("Manual backup completed successfully");
             } catch (Exception e) {
                 FabricModInitializer.getLogger().error("Manual backup failed", e);

@@ -6,6 +6,7 @@ import com.configcloudbackuper.core.BackupLimiter;
 import com.configcloudbackuper.core.ConfigBackuper;
 import com.configcloudbackuper.core.CriticalConfigBackuperException;
 import com.configcloudbackuper.core.ModConfig;
+import com.configcloudbackuper.core.ModConfigPaths;
 import com.configcloudbackuper.core.ModConfigurationManager;
 import com.configcloudbackuper.server.ConfigBackuperServerCommands;
 import com.configcloudbackuper.server.ServerSyncNetworking;
@@ -23,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 public class FabricModInitializer implements ModInitializer {
 
@@ -34,9 +36,12 @@ public class FabricModInitializer implements ModInitializer {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static FabricModInitializer instance;
 
-    private ModConfigurationManager modConfigurationManager;
-    private ConfigBackuper configBackuper;
-    private BackupLimiter backupLimiter;
+    private ModConfigurationManager clientModConfigurationManager;
+    private ModConfigurationManager serverModConfigurationManager;
+    private ConfigBackuper clientConfigBackuper;
+    private BackupLimiter clientBackupLimiter;
+    private ConfigBackuper serverConfigBackuper;
+    private BackupLimiter serverBackupLimiter;
 
     @Override
     public void onInitialize() {
@@ -49,52 +54,108 @@ public class FabricModInitializer implements ModInitializer {
 
     private void initScript() {
         instance = this;
-        final Path configFile = FabricLoader.getInstance().getConfigDir().resolve(MOD_METADATA.getId() + ".json");
-        modConfigurationManager = new ModConfigurationManager(LOGGER, configFile);
+        String modId = MOD_METADATA.getId();
+        Path clientFile = ModConfigPaths.clientConfigFile(modId);
+        Path serverFile = ModConfigPaths.serverConfigFile(modId);
+        Path legacyFile = ModConfigPaths.legacyConfigFile(modId);
 
-        final ModConfig modConfig = modConfigurationManager.read();
-        if (!Files.exists(configFile)) {
-            modConfigurationManager.save(modConfig);
-        }
-        configBackuper = new ConfigBackuper(LOGGER, modConfig);
-        backupLimiter = new BackupLimiter(LOGGER, modConfig);
+        migrateLegacyConfigIfNeeded(legacyFile, clientFile, serverFile);
 
-        // 不再自动执行备份
-        // configBackuper.performBackup();
-        // backupLimiter.removeOldBackups();
+        clientModConfigurationManager = new ModConfigurationManager(LOGGER, clientFile);
+        serverModConfigurationManager = new ModConfigurationManager(LOGGER, serverFile);
 
-        // 服务端命令注册（客户端命令由 ConfigBackuperClient 注册）
+        ensureDefaultConfigFile(clientModConfigurationManager, clientFile);
+        ensureDefaultConfigFile(serverModConfigurationManager, serverFile);
+
+        ModConfig clientCfg = clientModConfigurationManager.read();
+        ModConfig serverCfg = serverModConfigurationManager.read();
+        clientConfigBackuper = new ConfigBackuper(LOGGER, clientCfg);
+        clientBackupLimiter = new BackupLimiter(LOGGER, clientCfg);
+        serverConfigBackuper = new ConfigBackuper(LOGGER, serverCfg);
+        serverBackupLimiter = new BackupLimiter(LOGGER, serverCfg);
+
         CommandRegistrationCallback.EVENT.register(ConfigBackuperServerCommands::register);
         ServerSyncNetworking.register();
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            ModConfig cfg = getInstance().getModConfigurationManager().read();
+            ModConfig cfg = getInstance().getServerModConfigurationManager().read();
             ServerSyncNetworking.sendCapability(handler.getPlayer(), cfg.isClientUploadToServerEnabled());
         });
     }
 
-    // 公共方法
-    public static FabricModInitializer getInstance() { return instance; }
-    public ConfigBackuper getConfigBackuper() { return configBackuper; }
-    public BackupLimiter getBackupLimiter() { return backupLimiter; }
-    public ModConfigurationManager getModConfigurationManager() { return modConfigurationManager; }
-    public static ModMetadata getModMetadata() { return MOD_METADATA; }
-    public static LoggerWrapper getLogger() { return LOGGER; }
-
-    /**
-     * 重新加载配置并重新创建 ConfigBackuper 和 BackupLimiter 实例。
-     * 在配置界面保存配置后调用，以确保备份器使用最新的配置。
-     */
-    public void reloadConfig() {
-        final ModConfig modConfig = modConfigurationManager.read();
-        this.configBackuper = new ConfigBackuper(LOGGER, modConfig);
-        this.backupLimiter = new BackupLimiter(LOGGER, modConfig);
+    private static void migrateLegacyConfigIfNeeded(Path legacyFile, Path clientFile, Path serverFile) {
+        try {
+            if (!Files.isRegularFile(legacyFile)) {
+                return;
+            }
+            if (!Files.isRegularFile(clientFile)) {
+                Files.copy(legacyFile, clientFile, StandardCopyOption.REPLACE_EXISTING);
+                LOGGER.info("已将旧版主配置迁移为客户端配置: " + clientFile.getFileName());
+            }
+            if (!Files.isRegularFile(serverFile)) {
+                Files.copy(legacyFile, serverFile, StandardCopyOption.REPLACE_EXISTING);
+                LOGGER.info("已将旧版主配置迁移为服务端配置: " + serverFile.getFileName());
+            }
+        } catch (Exception e) {
+            LOGGER.error("迁移旧版 config-cloud-backuper.json 失败", e);
+        }
     }
 
-    // ===== WebDAV 配置管理 =====
+    private static void ensureDefaultConfigFile(ModConfigurationManager mgr, Path file) {
+        if (!Files.isRegularFile(file)) {
+            mgr.save(mgr.read());
+        }
+    }
 
-    /**
-     * 加载 WebDAV 配置
-     */
+    public static FabricModInitializer getInstance() {
+        return instance;
+    }
+
+    public ModConfigurationManager getClientModConfigurationManager() {
+        return clientModConfigurationManager;
+    }
+
+    public ModConfigurationManager getServerModConfigurationManager() {
+        return serverModConfigurationManager;
+    }
+
+    public ConfigBackuper getClientConfigBackuper() {
+        return clientConfigBackuper;
+    }
+
+    public BackupLimiter getClientBackupLimiter() {
+        return clientBackupLimiter;
+    }
+
+    public ConfigBackuper getServerConfigBackuper() {
+        return serverConfigBackuper;
+    }
+
+    public BackupLimiter getServerBackupLimiter() {
+        return serverBackupLimiter;
+    }
+
+    public static ModMetadata getModMetadata() {
+        return MOD_METADATA;
+    }
+
+    public static LoggerWrapper getLogger() {
+        return LOGGER;
+    }
+
+    /** 重新加载客户端主配置并刷新客户端侧备份器（ModMenu 界面保存后调用）。 */
+    public void reloadClientConfig() {
+        ModConfig c = clientModConfigurationManager.read();
+        this.clientConfigBackuper = new ConfigBackuper(LOGGER, c);
+        this.clientBackupLimiter = new BackupLimiter(LOGGER, c);
+    }
+
+    /** 重新加载服务端主配置并刷新服务端侧备份器（服务端 config / remote server set 后调用）。 */
+    public void reloadServerConfig() {
+        ModConfig c = serverModConfigurationManager.read();
+        this.serverConfigBackuper = new ConfigBackuper(LOGGER, c);
+        this.serverBackupLimiter = new BackupLimiter(LOGGER, c);
+    }
+
     public WebDavConfig loadWebDavConfig() {
         Path configFile = FabricLoader.getInstance().getConfigDir().resolve(MOD_METADATA.getId() + "_webdav.json");
         try {
@@ -108,9 +169,6 @@ public class FabricModInitializer implements ModInitializer {
         return new WebDavConfig();
     }
 
-    /**
-     * 保存 WebDAV 配置
-     */
     public void saveWebDavConfig(WebDavConfig webDavConfig) {
         Path configFile = FabricLoader.getInstance().getConfigDir().resolve(MOD_METADATA.getId() + "_webdav.json");
         try {

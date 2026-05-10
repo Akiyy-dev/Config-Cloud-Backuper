@@ -26,6 +26,8 @@ public class ModConfig {
     private boolean clientUploadToServerEnabled = true;
     private String clientUploadFolder = "./configcloudbackuper-backups/client-uploads";
     private int clientUploadMaxBackupsPerPlayer = 10;
+    /** 客户端上传到服务端的单个 .zip 大小上限（MiB），服务端校验用 */
+    private int clientUploadMaxFileSizeMb = 50;
 
     public boolean isIncludeGameConfigs() {
         return includeGameConfigs;
@@ -151,5 +153,27 @@ public class ModConfig {
 
     public void setClientUploadMaxBackupsPerPlayer(int clientUploadMaxBackupsPerPlayer) {
         this.clientUploadMaxBackupsPerPlayer = clientUploadMaxBackupsPerPlayer;
+    }
+
+    public int getClientUploadMaxFileSizeMb() {
+        return clientUploadMaxFileSizeMb;
+    }
+
+    public void setClientUploadMaxFileSizeMb(int clientUploadMaxFileSizeMb) {
+        this.clientUploadMaxFileSizeMb = clientUploadMaxFileSizeMb;
+    }
+
+    /**
+     * 上传 begin 校验用的字节上限；将 MiB 限制在 1～4096 之间，避免配置写成 0 或过大。
+     */
+    public long getClientUploadMaxFileSizeBytes() {
+        int mb = clientUploadMaxFileSizeMb;
+        if (mb < 1) {
+            mb = 1;
+        }
+        if (mb > 4096) {
+            mb = 4096;
+        }
+        return mb * 1024L * 1024L;
     }
 }
