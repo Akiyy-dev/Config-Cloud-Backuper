@@ -53,6 +53,9 @@ public class FabricModInitializer implements ModInitializer {
         modConfigurationManager = new ModConfigurationManager(LOGGER, configFile);
 
         final ModConfig modConfig = modConfigurationManager.read();
+        if (!Files.exists(configFile)) {
+            modConfigurationManager.save(modConfig);
+        }
         configBackuper = new ConfigBackuper(LOGGER, modConfig);
         backupLimiter = new BackupLimiter(LOGGER, modConfig);
 

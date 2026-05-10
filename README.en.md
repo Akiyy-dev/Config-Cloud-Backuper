@@ -64,7 +64,7 @@ Running root command without subcommand prints brief help.
 
 ## Configuration
 
-Main config: `config/config-cloud-backuper.json`  
+Main config: `config/config-cloud-backuper.json` (on first boot, if missing, a default file is written so you can edit it on the server disk)  
 WebDAV config: `config/config-cloud-backuper_webdav.json`
 
 You can also edit values with `config` / `remote cloud` / `remote server` commands above.
@@ -79,6 +79,7 @@ Main fields include: `includeGameConfigs`, `includeModConfigs`, `includeShaderPa
 - `clientUploadFolder`: server storage root for uploaded backups (default `./configcloudbackuper-backups/client-uploads`)
 - `clientUploadMaxBackupsPerPlayer`: max backups per player (`-1` means unlimited, default `10`)
 - On join, server capability is synced to the client; when `clientUploadToServerEnabled=false`, both `remote server upload` and the GUI "Upload Latest" action are disabled with a clear hint, preventing invalid chunk-send errors
+- Protocol `3u*`: after processing upload begin, the server sends an ACK and the client only sends chunks after a successful ACK—this avoids spamming chunks when begin is rejected; **keep client and server mod versions in sync**
 
 Server storage structure:
 

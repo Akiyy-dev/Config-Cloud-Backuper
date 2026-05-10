@@ -21,6 +21,8 @@ public class ConfigBackuperClient implements ClientModInitializer {
                         payload.supported(),
                         payload.protocolVersion()
                 )));
+        ClientPlayNetworking.registerGlobalReceiver(ServerSyncNetworking.UploadSessionAckPayload.ID,
+                (payload, context) -> ClientServerUploadSession.acceptAck(payload));
         ClientCommandRegistrationCallback.EVENT.register(ConfigBackuperCommands::register);
     }
 }

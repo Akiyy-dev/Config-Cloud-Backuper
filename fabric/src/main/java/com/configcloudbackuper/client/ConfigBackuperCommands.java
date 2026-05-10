@@ -407,7 +407,8 @@ public final class ConfigBackuperCommands {
         CompletableFuture.runAsync(() -> {
             try {
                 byte[] all = Files.readAllBytes(file);
-                client.execute(() -> sendServerUploadPackets(source, file.getFileName().toString(), all));
+                String sha = HashUtils.sha256HexBytes(all);
+                client.execute(() -> sendServerUploadPackets(source, file.getFileName().toString(), all, sha));
             } catch (Exception e) {
                 FabricModInitializer.getLogger().error("Upload to server failed (read file)", e);
                 client.execute(() -> source.sendError(Text.literal("上传到服务端失败: " + e.getMessage())));
@@ -419,28 +420,18 @@ public final class ConfigBackuperCommands {
     /**
      * Must run on the client thread: Fabric networking requires ordered sends from the main executor.
      */
-    private static void sendServerUploadPackets(FabricClientCommandSource source, String fileName, byte[] all) {
-        try {
-            ClientPlayNetworking.send(new ServerSyncNetworking.UploadBeginPayload(
-                    fileName,
-                    all.length,
-                    HashUtils.sha256HexBytes(all)
-            ));
-
-            final int chunkSize = 32 * 1024;
-            for (int pos = 0; pos < all.length; pos += chunkSize) {
-                int len = Math.min(chunkSize, all.length - pos);
-                byte[] chunk = new byte[len];
-                System.arraycopy(all, pos, chunk, 0, len);
-                ClientPlayNetworking.send(new ServerSyncNetworking.UploadChunkPayload(chunk));
-            }
-
-            ClientPlayNetworking.send(new ServerSyncNetworking.UploadEndPayload());
-            source.sendFeedback(Text.literal("上传分片已发送，等待服务端确认。"));
-        } catch (Exception e) {
-            FabricModInitializer.getLogger().error("Upload to server failed", e);
-            source.sendError(Text.literal("上传到服务端失败: " + e.getMessage()));
-        }
+    private static void sendServerUploadPackets(FabricClientCommandSource source, String fileName, byte[] all, String sha256Hex) {
+        MinecraftClient client = source.getClient();
+        boolean useAck = ServerRemoteActionsEntry.protocolUsesUploadHandshake(ServerRemoteActionsEntry.getServerProtocolVersion());
+        ClientServerUploadSender.send(
+                client,
+                useAck,
+                fileName,
+                all,
+                sha256Hex,
+                () -> source.sendFeedback(Text.literal("上传分片已发送，等待服务端确认。")),
+                msg -> source.sendError(Text.literal("上传到服务端失败: " + msg))
+        );
     }
 
     private static void sendServerAction(String action) {
