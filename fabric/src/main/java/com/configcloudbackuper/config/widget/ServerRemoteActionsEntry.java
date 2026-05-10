@@ -1,6 +1,7 @@
 package com.configcloudbackuper.config.widget;
 
 import com.configcloudbackuper.FabricModInitializer;
+import com.configcloudbackuper.client.ClientServerUploadSender;
 import com.configcloudbackuper.core.BackupCoordinator;
 import com.configcloudbackuper.core.ModConfig;
 import com.configcloudbackuper.server.ServerSyncNetworking;
@@ -34,7 +35,7 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
     private static volatile boolean lastSuccess = true;
     private static volatile boolean serverSupported = false;
     private static volatile String serverProtocol = "";
-    /** 服务端是否在能力包中允许客户端上传（2u0/2u1）；旧协议 "1" 视为允许，由 begin 再校验 */
+    /** 服务端是否在能力包中允许客户端上传（2u/3u + 末尾 0/1）；旧协议 "1" 视为允许，由 begin 再校验 */
     private static volatile boolean serverAllowsClientUpload = true;
 
     private int statusX;
@@ -248,37 +249,32 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
         CompletableFuture.runAsync(() -> {
             try {
                 byte[] all = Files.readAllBytes(file);
-                client.execute(() -> {
-                    try {
-                        ClientPlayNetworking.send(new ServerSyncNetworking.UploadBeginPayload(
-                                file.getFileName().toString(),
-                                all.length,
-                                HashUtils.sha256HexBytes(all)
-                        ));
-                        final int chunkSize = 32 * 1024;
-                        for (int pos = 0; pos < all.length; pos += chunkSize) {
-                            int len = Math.min(chunkSize, all.length - pos);
-                            byte[] chunk = new byte[len];
-                            System.arraycopy(all, pos, chunk, 0, len);
-                            ClientPlayNetworking.send(new ServerSyncNetworking.UploadChunkPayload(chunk));
+                String sha = HashUtils.sha256HexBytes(all);
+                boolean useAck = protocolUsesUploadHandshake(getServerProtocolVersion());
+                client.execute(() -> ClientServerUploadSender.send(
+                        client,
+                        useAck,
+                        file.getFileName().toString(),
+                        all,
+                        sha,
+                        () -> {
+                            setLocalResult(
+                                    isChinese ? "服务端联动结果" : "Remote Server Result",
+                                    true,
+                                    List.of(isChinese ? "上传分片已发送，等待服务端确认。" : "Upload sent, waiting for server confirmation.")
+                            );
+                            isUploading = false;
+                        },
+                        msg -> {
+                            FabricModInitializer.getLogger().error("Upload latest backup to server failed: " + msg);
+                            setLocalResult(
+                                    isChinese ? "服务端联动结果" : "Remote Server Result",
+                                    false,
+                                    List.of((isChinese ? "上传失败: " : "Upload failed: ") + msg)
+                            );
+                            isUploading = false;
                         }
-                        ClientPlayNetworking.send(new ServerSyncNetworking.UploadEndPayload());
-                        setLocalResult(
-                                isChinese ? "服务端联动结果" : "Remote Server Result",
-                                true,
-                                List.of(isChinese ? "上传分片已发送，等待服务端确认。" : "Upload sent, waiting for server confirmation.")
-                        );
-                    } catch (Exception e) {
-                        FabricModInitializer.getLogger().error("Upload latest backup to server failed", e);
-                        setLocalResult(
-                                isChinese ? "服务端联动结果" : "Remote Server Result",
-                                false,
-                                List.of((isChinese ? "上传失败: " : "Upload failed: ") + e.getMessage())
-                        );
-                    } finally {
-                        isUploading = false;
-                    }
-                });
+                ));
             } catch (Exception e) {
                 FabricModInitializer.getLogger().error("Upload latest backup to server failed (read file)", e);
                 client.execute(() -> {
@@ -322,10 +318,23 @@ public class ServerRemoteActionsEntry extends AbstractConfigListEntry<Void> {
         if (protocolVersion == null) {
             return true;
         }
-        if (protocolVersion.length() >= 4 && protocolVersion.startsWith("2u")) {
+        if (protocolVersion.length() >= 4 && (protocolVersion.startsWith("2u") || protocolVersion.startsWith("3u"))) {
             return protocolVersion.charAt(3) == '1';
         }
         return true;
+    }
+
+    public static String getServerProtocolVersion() {
+        return serverProtocol;
+    }
+
+    /** 协议主版本号不低于 3 时，上传需等待服务端对 begin 的 ACK 后再发分片。 */
+    public static boolean protocolUsesUploadHandshake(String protocolVersion) {
+        if (protocolVersion == null || protocolVersion.isEmpty()) {
+            return false;
+        }
+        char c = protocolVersion.charAt(0);
+        return Character.isDigit(c) && (c - '0') >= 3;
     }
 
     private boolean isRemoteActionsReady() {

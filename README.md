@@ -64,7 +64,7 @@
 
 ## 配置说明
 
-主配置：`config/config-cloud-backuper.json`。WebDAV：`config/config-cloud-backuper_webdav.json`。亦可使用上文 `config` / `remote cloud` / `remote server` 子命令修改。
+主配置：`config/config-cloud-backuper.json`（首次启动若不存在会自动写入默认内容到该路径，便于在服务端目录直接编辑）。WebDAV：`config/config-cloud-backuper_webdav.json`。亦可使用上文 `config` / `remote cloud` / `remote server` 子命令修改。
 
 ### 通用与备份存储
 
@@ -76,6 +76,7 @@
 - `clientUploadFolder`：服务端保存客户端上传备份的根目录（默认 `./configcloudbackuper-backups/client-uploads`）
 - `clientUploadMaxBackupsPerPlayer`：每位玩家最多保留数量（`-1` 不限制，默认 `10`）
 - 联机时服务端会同步上传能力；当 `clientUploadToServerEnabled=false` 时，客户端 `remote server upload` 与配置界面“上传最新”会被禁用，并给出提示，避免无效分片上传报错
+- 协议 `3u*`：服务端在处理「上传开始」后会回复 ACK，客户端仅在收到成功 ACK 后才发送分片，避免 begin 校验失败时仍发送分片；**请保持客户端与服务端模组版本一致**
 
 服务端保存结构示例：
 
